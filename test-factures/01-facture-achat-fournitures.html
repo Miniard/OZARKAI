@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Facture Achat - Fournitures</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 40px; }
+        .header { border-bottom: 3px solid #e74c3c; padding-bottom: 20px; margin-bottom: 30px; }
+        .company { font-size: 24px; font-weight: bold; color: #e74c3c; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background-color: #e74c3c; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .total { font-size: 20px; font-weight: bold; text-align: right; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company">BUREAU EXPRESS</div>
+        <p>456 Rue du Commerce<br>69007 Lyon<br>SIRET: 789 123 456 00023<br>TVA: FR78912345678</p>
+    </div>
+    
+    <h1>FACTURE D'ACHAT N° FA-2024-5678</h1>
+    <p><strong>Date:</strong> 10 mars 2024<br><strong>Client:</strong> Ma Petite Entreprise SARL</p>
+    
+    <table>
+        <tr><th>Article</th><th>Qté</th><th>Prix HT</th><th>Total</th></tr>
+        <tr><td>Ordinateur portable HP ProBook</td><td>1</td><td>850,00 €</td><td>850,00 €</td></tr>
+        <tr><td>Écran 24 pouces Dell</td><td>2</td><td>180,00 €</td><td>360,00 €</td></tr>
+        <tr><td>Clavier et souris sans fil</td><td>2</td><td>45,00 €</td><td>90,00 €</td></tr>
+    </table>
+    
+    <div class="total">
+        <p>Total HT: 1 300,00 €</p>
+        <p>TVA 20%: 260,00 €</p>
+        <p style="color: #e74c3c;">TOTAL TTC: 1 560,00 €</p>
+    </div>
+</body>
+</html>
+

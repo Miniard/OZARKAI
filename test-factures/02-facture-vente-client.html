@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Facture Vente - Client</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 40px; }
+        .header { border-bottom: 3px solid #27ae60; padding-bottom: 20px; margin-bottom: 30px; }
+        .company { font-size: 24px; font-weight: bold; color: #27ae60; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th { background-color: #27ae60; color: white; padding: 12px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .total { font-size: 20px; font-weight: bold; text-align: right; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company">VOTRE ENTREPRISE</div>
+        <p>12 Avenue de la République<br>75011 Paris<br>SIRET: 123 987 654 00045<br>TVA: FR12398765400</p>
+    </div>
+    
+    <h1>FACTURE DE VENTE N° FV-2024-1234</h1>
+    <p><strong>Date:</strong> 25 mars 2024</p>
+    <p><strong>Client:</strong><br>Société ABC SARL<br>89 Boulevard Haussmann<br>75008 Paris<br>SIRET: 456 789 123 00012</p>
+    
+    <table>
+        <tr><th>Prestation</th><th>Qté</th><th>Prix HT</th><th>Total</th></tr>
+        <tr><td>Développement site web vitrine</td><td>1</td><td>2 500,00 €</td><td>2 500,00 €</td></tr>
+        <tr><td>Référencement SEO (3 mois)</td><td>1</td><td>800,00 €</td><td>800,00 €</td></tr>
+        <tr><td>Formation WordPress (2 jours)</td><td>1</td><td>700,00 €</td><td>700,00 €</td></tr>
+    </table>
+    
+    <div class="total">
+        <p>Total HT: 4 000,00 €</p>
+        <p>TVA 20%: 800,00 €</p>
+        <p style="color: #27ae60;">TOTAL TTC: 4 800,00 €</p>
+        <p style="font-size: 14px; color: #666; margin-top: 20px;">À RECEVOIR - Paiement sous 30 jours</p>
+    </div>
+</body>
+</html>
+

@@ -1,0 +1,67 @@
+# Docker Compose pour ComptaPilot
+version: '3.8'
+
+services:
+  # Base de données PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    container_name: comptapilot-postgres
+    environment:
+      POSTGRES_DB: comptapilot
+      POSTGRES_USER: comptapilot
+      POSTGRES_PASSWORD: comptapilot_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - comptapilot-network
+
+  # Ollama pour modèle local (Mistral 7B)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: comptapilot-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - comptapilot-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    # Décommenter si pas de GPU disponible
+    # command: serve
+
+  # Application Next.js (optionnel - pour production)
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: comptapilot-app
+  #   ports:
+  #     - "3000:3000"
+  #   environment:
+  #     DATABASE_URL: "postgresql://comptapilot:comptapilot_password@postgres:5432/comptapilot?schema=public"
+  #     NEXTAUTH_URL: "http://localhost:3000"
+  #     NEXTAUTH_SECRET: "your-secret-key-here"
+  #     OPENAI_API_KEY: "your-openai-key"
+  #     OLLAMA_URL: "http://ollama:11434"
+  #   depends_on:
+  #     - postgres
+  #     - ollama
+  #   networks:
+  #     - comptapilot-network
+
+volumes:
+  postgres_data:
+  ollama_data:
+
+networks:
+  comptapilot-network:
+    driver: bridge
+

@@ -1,0 +1,500 @@
+/**
+ * STYLE FLAT 2015 - Design Simple et Clair
+ * Inspiré de Material Design v1, iOS 7-8, Dribbble 2015
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   VARIABLES CSS - THÈME FLAT 2015
+   ============================================ */
+
+:root {
+  /* Couleurs de fond */
+  --bg-primary: #F5F7FA;
+  --bg-secondary: #ECF0F1;
+  --bg-card: #FFFFFF;
+  --bg-hover: #E8ECEF;
+  
+  /* Couleurs de texte */
+  --text-primary: #2C3E50;
+  --text-secondary: #7F8C8D;
+  --text-muted: #95A5A6;
+  --text-white: #FFFFFF;
+  
+  /* Couleurs d'action */
+  --color-primary: #3498DB;
+  --color-primary-hover: #2980B9;
+  --color-primary-light: #EBF5FB;
+  
+  --color-success: #2ECC71;
+  --color-success-hover: #27AE60;
+  --color-success-light: #E8F8F5;
+  
+  --color-danger: #E74C3C;
+  --color-danger-hover: #C0392B;
+  --color-danger-light: #FADBD8;
+  
+  --color-warning: #F39C12;
+  --color-warning-hover: #D68910;
+  --color-warning-light: #FEF5E7;
+  
+  --color-info: #1ABC9C;
+  --color-info-hover: #16A085;
+  --color-info-light: #E8F8F5;
+  
+  /* Bordures */
+  --border-color: #E1E8ED;
+  --border-dark: #BDC3C7;
+  
+  /* Ombres */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.12);
+  
+  /* Rayons de bordure */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+}
+
+/* Mode Sombre (Optionnel) */
+[data-theme="dark"] {
+  --bg-primary: #0B1120;
+  --bg-secondary: #1a202c;
+  --bg-card: #1E2838;
+  --bg-hover: #2D3748;
+  
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0AEC0;
+  --text-muted: #718096;
+  --text-white: #FFFFFF;
+  
+  --color-primary: #3B82F6;
+  --color-primary-hover: #2563EB;
+  --color-primary-light: #1E3A8A;
+  
+  --border-color: #2D3748;
+  --border-dark: #4A5568;
+  
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.25);
+  --shadow-lg: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-xl: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+/* ============================================
+   BASE STYLES
+   ============================================ */
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+  
+  body {
+    font-family: 'Open Sans', 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--text-primary);
+  }
+  
+  h1 { font-size: 32px; }
+  h2 { font-size: 24px; }
+  h3 { font-size: 18px; }
+  h4 { font-size: 16px; }
+  
+  p {
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+  
+  small {
+    font-size: 12px;
+    color: var(--text-muted);
+  }
+  
+  a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color 0.2s ease;
+  }
+  
+  a:hover {
+    color: var(--color-primary-hover);
+  }
+}
+
+/* ============================================
+   COMPONENTS - STYLE FLAT 2015
+   ============================================ */
+
+@layer components {
+  
+  /* ========== CARDS ========== */
+  .card-flat {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+  }
+  
+  .card-flat:hover {
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
+  }
+  
+  /* ========== BOUTONS ========== */
+  .btn-flat {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 24px;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--radius-md);
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+  }
+  
+  .btn-flat:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  /* Bouton Primary */
+  .btn-primary-flat {
+    @apply btn-flat;
+    background-color: var(--color-primary);
+    color: var(--text-white);
+  }
+  
+  .btn-primary-flat:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+  }
+  
+  .btn-primary-flat:active {
+    transform: translateY(0);
+  }
+  
+  /* Bouton Success */
+  .btn-success-flat {
+    @apply btn-flat;
+    background-color: var(--color-success);
+    color: var(--text-white);
+  }
+  
+  .btn-success-flat:hover:not(:disabled) {
+    background-color: var(--color-success-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
+  }
+  
+  /* Bouton Danger */
+  .btn-danger-flat {
+    @apply btn-flat;
+    background-color: var(--color-danger);
+    color: var(--text-white);
+  }
+  
+  .btn-danger-flat:hover:not(:disabled) {
+    background-color: var(--color-danger-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
+  }
+  
+  /* Bouton Outline */
+  .btn-outline-flat {
+    @apply btn-flat;
+    background-color: transparent;
+    border: 2px solid var(--color-primary);
+    color: var(--color-primary);
+  }
+  
+  .btn-outline-flat:hover:not(:disabled) {
+    background-color: var(--color-primary-light);
+    transform: translateY(-2px);
+  }
+  
+  /* Bouton Ghost */
+  .btn-ghost-flat {
+    @apply btn-flat;
+    background-color: transparent;
+    color: var(--text-secondary);
+  }
+  
+  .btn-ghost-flat:hover:not(:disabled) {
+    background-color: var(--bg-hover);
+  }
+  
+  /* ========== INPUTS ========== */
+  .input-flat {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 14px;
+    color: var(--text-primary);
+    background-color: var(--bg-card);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+  }
+  
+  .input-flat:focus {
+    outline: none;
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+  }
+  
+  .input-flat::placeholder {
+    color: var(--text-muted);
+  }
+  
+  /* ========== SIDEBAR FLAT ========== */
+  .sidebar-flat {
+    background-color: var(--bg-card);
+    border-right: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  .sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    border-radius: var(--radius-md);
+    transition: all 0.2s ease;
+    cursor: pointer;
+  }
+  
+  .sidebar-item:hover {
+    background-color: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  
+  .sidebar-item.active {
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+    font-weight: 600;
+  }
+  
+  /* ========== BADGES ========== */
+  .badge-flat {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: var(--radius-full);
+    white-space: nowrap;
+  }
+  
+  .badge-primary {
+    @apply badge-flat;
+    background-color: var(--color-primary-light);
+    color: var(--color-primary);
+  }
+  
+  .badge-success {
+    @apply badge-flat;
+    background-color: var(--color-success-light);
+    color: var(--color-success);
+  }
+  
+  .badge-danger {
+    @apply badge-flat;
+    background-color: var(--color-danger-light);
+    color: var(--color-danger);
+  }
+  
+  .badge-warning {
+    @apply badge-flat;
+    background-color: var(--color-warning-light);
+    color: var(--color-warning);
+  }
+  
+  /* ========== ALERTS ========== */
+  .alert-flat {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 16px;
+    border-radius: var(--radius-md);
+    font-size: 14px;
+  }
+  
+  .alert-info {
+    @apply alert-flat;
+    background-color: var(--color-info-light);
+    border-left: 4px solid var(--color-info);
+    color: var(--color-info-hover);
+  }
+  
+  .alert-success {
+    @apply alert-flat;
+    background-color: var(--color-success-light);
+    border-left: 4px solid var(--color-success);
+    color: var(--color-success-hover);
+  }
+  
+  .alert-warning {
+    @apply alert-flat;
+    background-color: var(--color-warning-light);
+    border-left: 4px solid var(--color-warning);
+    color: var(--color-warning-hover);
+  }
+  
+  .alert-danger {
+    @apply alert-flat;
+    background-color: var(--color-danger-light);
+    border-left: 4px solid var(--color-danger);
+    color: var(--color-danger-hover);
+  }
+  
+  /* ========== NAVIGATION ========== */
+  .navbar-flat {
+    background-color: var(--bg-card);
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+  }
+  
+  /* ========== DIVIDER ========== */
+  .divider-flat {
+    height: 1px;
+    background-color: var(--border-color);
+    margin: 24px 0;
+  }
+  
+}
+
+/* ============================================
+   UTILITIES
+   ============================================ */
+
+@layer utilities {
+  
+  /* Animations Smooth */
+  .transition-smooth {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  .transition-fast {
+    transition: all 0.15s ease;
+  }
+  
+  /* Hover Effects */
+  .hover-lift:hover {
+    transform: translateY(-4px);
+  }
+  
+  .hover-scale:hover {
+    transform: scale(1.02);
+  }
+  
+  /* Fade In Animation */
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.4s ease-out;
+  }
+  
+  /* Scrollbar Custom */
+  .scrollbar-flat::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .scrollbar-flat::-webkit-scrollbar-track {
+    background: var(--bg-secondary);
+    border-radius: var(--radius-sm);
+  }
+  
+  .scrollbar-flat::-webkit-scrollbar-thumb {
+    background: var(--border-dark);
+    border-radius: var(--radius-sm);
+  }
+  
+  .scrollbar-flat::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+  }
+  
+  /* Focus Visible */
+  .focus-ring:focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+
+@media (max-width: 768px) {
+  h1 { font-size: 24px; }
+  h2 { font-size: 20px; }
+  h3 { font-size: 16px; }
+  
+  .card-flat {
+    padding: 16px;
+  }
+  
+  .btn-flat {
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+}
+
+/* ============================================
+   PRINT
+   ============================================ */
+
+@media print {
+  body {
+    background-color: white;
+    color: black;
+  }
+  
+  .sidebar-flat,
+  .navbar-flat,
+  button {
+    display: none;
+  }
+  
+  .card-flat {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}
+

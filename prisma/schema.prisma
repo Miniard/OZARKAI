@@ -1,0 +1,368 @@
+// Schéma de base de données ComptaPilot
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Utilisateur (TPE ou cabinet)
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  passwordHash  String?   // Optionnel pour les connexions OAuth
+  role          UserRole  @default(USER)
+  
+  // Abonnement
+  plan          SubscriptionPlan @default(STARTER)
+  planExpiresAt DateTime?        // Date d'expiration du plan (null = à vie)
+  stripeCustomerId String?       @unique
+  stripeSubscriptionId String?   @unique
+  
+  // Gmail OAuth (pour import automatique des factures)
+  gmailConnected    Boolean   @default(false)
+  gmailAccessToken  String?   @db.Text
+  gmailRefreshToken String?   @db.Text
+  gmailTokenExpiry  DateTime?
+  
+  // Outlook OAuth (pour import automatique des factures)
+  outlookConnected    Boolean   @default(false)
+  outlookAccessToken  String?   @db.Text
+  outlookRefreshToken String?   @db.Text
+  outlookTokenExpiry  DateTime?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  companies     Company[]
+  sessions      Session[]
+  teamMemberships TeamMember[]
+  
+  @@index([email])
+  @@index([stripeCustomerId])
+}
+
+enum UserRole {
+  USER         // Utilisateur standard
+  TPE          // Utilisateur TPE (legacy)
+  CABINET      // Cabinet comptable
+  ADMIN        // Administrateur
+}
+
+enum SubscriptionPlan {
+  STARTER      // Gratuit - Pour micro/auto-entrepreneurs (1 entreprise, fonctions de base)
+  PREMIUM      // Payant - Pour moyennes entreprises (illimité, toutes fonctionnalités)
+}
+
+// Session d'authentification
+model Session {
+  id           String   @id @default(cuid())
+  userId       String
+  token        String   @unique
+  expiresAt    DateTime
+  
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([token])
+}
+
+// Entreprise (TPE)
+model Company {
+  id           String       @id @default(cuid())
+  name         String
+  siret        String?      @unique
+  address      String?
+  companyType  CompanyType  @default(MICRO_ENTREPRISE)
+  vatRegime    VATRegime    @default(FRANCHISE_BASE)
+  
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  documents    Document[]
+  entries      Entry[]
+  invoices     Invoice[]
+  
+  @@index([userId])
+  @@index([siret])
+}
+
+enum CompanyType {
+  MICRO_ENTREPRISE          // Auto-entrepreneur
+  EURL                      // Entreprise Unipersonnelle à Responsabilité Limitée
+  SARL                      // Société à Responsabilité Limitée
+  SAS                       // Société par Actions Simplifiée
+  SASU                      // SAS Unipersonnelle
+  SA                        // Société Anonyme
+  SNC                       // Société en Nom Collectif
+  ASSOCIATION               // Association loi 1901
+  PROFESSION_LIBERALE       // Profession libérale
+}
+
+enum VATRegime {
+  FRANCHISE_BASE            // Pas de TVA (micro-entreprise < seuils)
+  REEL_SIMPLIFIE            // TVA au régime réel simplifié
+  REEL_NORMAL               // TVA au régime réel normal
+  MINI_REEL                 // Mini-réel (petites entreprises)
+}
+
+// Document (facture, reçu, etc.)
+model Document {
+  id           String       @id @default(cuid())
+  filename     String
+  fileUrl      String       // URL S3
+  fileType     String       // pdf, image, etc.
+  fileSize     Int
+  
+  companyId    String
+  company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // Analyse IA
+  analyzed     Boolean      @default(false)
+  analysisData Json?        // Résultat brut de l'IA
+  
+  // Données extraites
+  docType      DocumentType?
+  amount       Float?
+  vat          Float?
+  date         DateTime?
+  supplier     String?
+  
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  
+  entries      Entry[]
+  
+  @@index([companyId])
+  @@index([analyzed])
+}
+
+enum DocumentType {
+  FACTURE_ACHAT
+  FACTURE_VENTE
+  RECU
+  NOTE_FRAIS
+  RELEVE_BANCAIRE
+  AUTRE
+}
+
+// Écriture comptable
+model Entry {
+  id           String   @id @default(cuid())
+  
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  documentId   String?
+  document     Document? @relation(fields: [documentId], references: [id], onDelete: SetNull)
+  
+  // Données comptables
+  date         DateTime
+  description  String
+  category     String   // Catégorie comptable (ex: "6063 - Fournitures")
+  account      String?  // Compte comptable
+  
+  debit        Float    @default(0)
+  credit       Float    @default(0)
+  
+  // Validation
+  validated    Boolean  @default(false)
+  validatedBy  String?
+  validatedAt  DateTime?
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  @@index([companyId])
+  @@index([documentId])
+  @@index([date])
+}
+
+// Conversation chat IA
+model Conversation {
+  id           String    @id @default(cuid())
+  userId       String
+  companyId    String?
+  
+  messages     Message[]
+  
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  
+  @@index([userId])
+}
+
+model Message {
+  id              String       @id @default(cuid())
+  conversationId  String
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  role            MessageRole
+  content         String       @db.Text
+  
+  createdAt       DateTime     @default(now())
+  
+  @@index([conversationId])
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+// Factures et Devis
+model Invoice {
+  id             String        @id @default(cuid())
+  companyId      String
+  company        Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  type           InvoiceType   // INVOICE ou QUOTE
+  number         Int           // Numéro incrémental
+  invoiceNumber  String        // FAC-2024-0001 ou DEV-2024-0001
+  
+  // Client
+  clientName     String
+  clientEmail    String?
+  clientAddress  String?
+  clientPhone    String?
+  
+  // Montants
+  subtotal       Float         // HT
+  vatAmount      Float         // TVA
+  total          Float         // TTC
+  
+  // Statut et dates
+  status         InvoiceStatus @default(DRAFT)
+  issueDate      DateTime?
+  dueDate        DateTime?
+  paidDate       DateTime?
+  
+  // Divers
+  notes          String?       @db.Text
+  paymentMethod  String?
+  
+  // Relations
+  items          InvoiceItem[]
+  
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  
+  @@unique([companyId, invoiceNumber])
+  @@index([companyId])
+  @@index([status])
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  description String
+  quantity    Float
+  unitPrice   Float
+  vatRate     Float    @default(0.2) // 20% par défaut
+  total       Float
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([invoiceId])
+}
+
+enum InvoiceType {
+  INVOICE  // Facture
+  QUOTE    // Devis
+}
+
+enum InvoiceStatus {
+  DRAFT      // Brouillon
+  SENT       // Envoyée
+  PAID       // Payée
+  CANCELLED  // Annulée
+  OVERDUE    // En retard
+}
+
+// ============================================
+// GESTION DES ÉQUIPES / ORGANISATIONS
+// ============================================
+
+// Équipe / Organisation
+model Team {
+  id          String       @id @default(cuid())
+  name        String
+  slug        String       @unique  // URL-friendly name
+  description String?
+  
+  ownerId     String       // Propriétaire de l'équipe
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  
+  members     TeamMember[]
+  invitations TeamInvitation[]
+  
+  @@index([ownerId])
+  @@index([slug])
+}
+
+// Membre d'une équipe
+model TeamMember {
+  id        String     @id @default(cuid())
+  teamId    String
+  team      Team       @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  role      TeamRole   @default(MEMBER)
+  
+  joinedAt  DateTime   @default(now())
+  
+  @@unique([teamId, userId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+enum TeamRole {
+  OWNER    // Propriétaire (full access)
+  ADMIN    // Administrateur (peut gérer les membres)
+  MEMBER   // Membre standard (lecture/écriture)
+  VIEWER   // Observateur (lecture seule)
+}
+
+// Invitation à rejoindre une équipe
+model TeamInvitation {
+  id        String           @id @default(cuid())
+  teamId    String
+  team      Team             @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  
+  email     String           // Email de l'invité
+  role      TeamRole         @default(MEMBER)
+  
+  token     String           @unique @default(cuid())  // Token unique pour accepter
+  status    InvitationStatus @default(PENDING)
+  
+  invitedBy String           // ID de l'utilisateur qui a invité
+  
+  expiresAt DateTime         // Date d'expiration (7 jours)
+  createdAt DateTime         @default(now())
+  
+  @@unique([teamId, email])
+  @@index([teamId])
+  @@index([email])
+  @@index([token])
+}
+
+enum InvitationStatus {
+  PENDING   // En attente
+  ACCEPTED  // Acceptée
+  DECLINED  // Refusée
+  EXPIRED   // Expirée
+}
+

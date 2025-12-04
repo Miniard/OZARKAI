@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Reçu Carburant</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; padding: 40px; background: #f8f9fa; }
+        .ticket { background: white; padding: 30px; border: 2px dashed #9b59b6; }
+        .header { text-align: center; border-bottom: 2px solid #9b59b6; padding-bottom: 15px; margin-bottom: 20px; }
+        .company { font-size: 20px; font-weight: bold; color: #9b59b6; }
+        .ligne { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dotted #ddd; }
+        .total { font-size: 24px; font-weight: bold; text-align: center; margin-top: 20px; padding: 15px; background: #9b59b6; color: white; }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <div class="header">
+            <div class="company">⛽ STATION TOTAL</div>
+            <p style="font-size: 12px; margin: 5px 0;">Autoroute A6 - Aire de Nemours<br>77140 Nemours<br>SIRET: 999 777 555 00067</p>
+        </div>
+        
+        <h2 style="text-align: center; color: #9b59b6;">TICKET DE CAISSE</h2>
+        
+        <div class="ligne">
+            <span>Date:</span>
+            <span><strong>12/04/2024 - 14:23</strong></span>
+        </div>
+        <div class="ligne">
+            <span>Pompe:</span>
+            <span>N° 8</span>
+        </div>
+        <div class="ligne">
+            <span>Immatriculation:</span>
+            <span>AB-123-CD</span>
+        </div>
+        
+        <hr style="margin: 20px 0; border: 1px solid #9b59b6;">
+        
+        <div class="ligne">
+            <span>Gazole B7</span>
+            <span></span>
+        </div>
+        <div class="ligne">
+            <span>Quantité: 45,80 litres</span>
+            <span></span>
+        </div>
+        <div class="ligne">
+            <span>Prix au litre: 1,789 €</span>
+            <span></span>
+        </div>
+        
+        <hr style="margin: 20px 0; border: 1px solid #9b59b6;">
+        
+        <div class="ligne" style="font-size: 14px;">
+            <span>Sous-total HT:</span>
+            <span><strong>68,51 €</strong></span>
+        </div>
+        <div class="ligne" style="font-size: 14px;">
+            <span>TVA 20%:</span>
+            <span><strong>13,70 €</strong></span>
+        </div>
+        
+        <div class="total">
+            TOTAL TTC: 82,21 €
+        </div>
+        
+        <p style="text-align: center; margin-top: 15px; font-size: 11px; color: #666;">
+            🚗 Déplacement professionnel - Réunion Lyon<br>
+            Paiement: Carte bancaire pro<br>
+            N° transaction: 87654321
+        </p>
+        
+        <p style="text-align: center; margin-top: 20px; font-size: 10px; color: #999;">
+            Merci de votre visite !<br>
+            TVA: FR99977755500
+        </p>
+    </div>
+</body>
+</html>
+

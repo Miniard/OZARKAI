@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Facture Test - Fournitures Bureau</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 20mm;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px;
+        }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 40px;
+            border-bottom: 3px solid #0066cc;
+            padding-bottom: 20px;
+        }
+        .company {
+            font-size: 24px;
+            font-weight: bold;
+            color: #0066cc;
+        }
+        .invoice-info {
+            text-align: right;
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        .section-title {
+            font-weight: bold;
+            font-size: 14px;
+            text-transform: uppercase;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        th {
+            background-color: #0066cc;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        .text-right {
+            text-align: right;
+        }
+        .total-section {
+            margin-top: 30px;
+            float: right;
+            width: 300px;
+        }
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+        }
+        .total-row.final {
+            font-size: 18px;
+            font-weight: bold;
+            border-top: 2px solid #333;
+            margin-top: 10px;
+            padding-top: 10px;
+        }
+        .footer {
+            clear: both;
+            margin-top: 60px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <div class="company">FOURNITURES PRO</div>
+            <div>123 Avenue des Champs<br>75008 Paris<br>SIRET: 123 456 789 00012<br>TVA: FR12345678901</div>
+        </div>
+        <div class="invoice-info">
+            <h1 style="margin: 0;">FACTURE</h1>
+            <p style="margin: 5px 0;"><strong>N° FA-2024-001234</strong></p>
+            <p style="margin: 5px 0;">Date: 15 janvier 2024</p>
+            <p style="margin: 5px 0;">Échéance: 14 février 2024</p>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Client</div>
+        <strong>Ma Petite Entreprise SARL</strong><br>
+        45 Rue du Commerce<br>
+        69002 Lyon<br>
+        SIRET: 987 654 321 00056
+    </div>
+
+    <div class="section">
+        <div class="section-title">Détails de la facture</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th class="text-right">Quantité</th>
+                    <th class="text-right">Prix unitaire HT</th>
+                    <th class="text-right">Total HT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Ramettes papier A4 80g (lot de 5)</td>
+                    <td class="text-right">3</td>
+                    <td class="text-right">25,00 €</td>
+                    <td class="text-right">75,00 €</td>
+                </tr>
+                <tr>
+                    <td>Stylos bille bleu (boîte de 50)</td>
+                    <td class="text-right">2</td>
+                    <td class="text-right">18,50 €</td>
+                    <td class="text-right">37,00 €</td>
+                </tr>
+                <tr>
+                    <td>Classeurs à levier A4 (lot de 10)</td>
+                    <td class="text-right">1</td>
+                    <td class="text-right">42,00 €</td>
+                    <td class="text-right">42,00 €</td>
+                </tr>
+                <tr>
+                    <td>Agrafeuse professionnelle</td>
+                    <td class="text-right">1</td>
+                    <td class="text-right">15,90 €</td>
+                    <td class="text-right">15,90 €</td>
+                </tr>
+                <tr>
+                    <td>Post-it notes repositionnables (lot de 12)</td>
+                    <td class="text-right">2</td>
+                    <td class="text-right">12,30 €</td>
+                    <td class="text-right">24,60 €</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="total-section">
+        <div class="total-row">
+            <span>Total HT:</span>
+            <span><strong>194,50 €</strong></span>
+        </div>
+        <div class="total-row">
+            <span>TVA 20%:</span>
+            <span><strong>38,90 €</strong></span>
+        </div>
+        <div class="total-row final">
+            <span>TOTAL TTC:</span>
+            <span>233,40 €</span>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p><strong>Conditions de paiement:</strong> Paiement à 30 jours. En cas de retard, pénalités de 3 fois le taux d'intérêt légal.</p>
+        <p><strong>Modalités de règlement:</strong> Virement bancaire - IBAN: FR76 1234 5678 9012 3456 7890 123 - BIC: ABCDEFGH</p>
+        <p style="margin-top: 15px; text-align: center;">FOURNITURES PRO - SAS au capital de 50 000 € - RCS Paris B 123 456 789<br>
+        Tél: 01 23 45 67 89 - Email: contact@fournitures-pro.fr - www.fournitures-pro.fr</p>
+    </div>
+</body>
+</html>
+
