@@ -72,9 +72,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
+    // Check action - status check only
+    const { searchParams } = new URL(request.url);
+    const action = searchParams.get('action');
+
     const user = await prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
+        id: true,
         outlookConnected: true,
         outlookAccessToken: true,
         outlookRefreshToken: true,
@@ -82,32 +87,39 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    if (!user?.outlookConnected) {
+    // Si on veut juste le status
+    if (action === 'status') {
+      return NextResponse.json({ 
+        connected: user?.outlookConnected || false 
+      });
+    }
+
+    if (!user?.outlookConnected || !user?.outlookAccessToken) {
       return NextResponse.json({ connected: false, emails: [] });
     }
 
     // Obtenir un token valide
-    const accessToken = await getValidAccessToken({ ...user, id: session.user.id });
-
-    // Paramètres de recherche
-    const { searchParams } = new URL(request.url);
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-
-    // Construire le filtre
-    let filter = 'hasAttachments eq true';
-    if (startDate) {
-      filter += ` and receivedDateTime ge ${startDate}`;
+    let accessToken: string;
+    try {
+      accessToken = await getValidAccessToken(user);
+    } catch (e) {
+      // Token invalide, reset connection
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: {
+          outlookConnected: false,
+          outlookAccessToken: null,
+          outlookRefreshToken: null,
+          outlookTokenExpiry: null,
+        },
+      });
+      return NextResponse.json({ connected: false, emails: [] });
     }
-    if (endDate) {
-      filter += ` and receivedDateTime le ${endDate}`;
-    }
 
-    // Rechercher les emails avec pièces jointes
-    const searchQuery = INVOICE_KEYWORDS.map(k => `"${k}"`).join(' OR ');
-    
+    // Récupérer les emails récents (sans $filter qui pose problème avec Graph API)
+    // On filtre côté client pour les pièces jointes
     const messagesResponse = await fetch(
-      `${GRAPH_API_URL}/me/messages?$filter=${encodeURIComponent(filter)}&$search="${encodeURIComponent(searchQuery)}"&$select=id,subject,from,receivedDateTime,hasAttachments&$top=50&$orderby=receivedDateTime desc`,
+      `${GRAPH_API_URL}/me/messages?$select=id,subject,from,receivedDateTime,hasAttachments&$top=100&$orderby=receivedDateTime desc`,
       {
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -119,11 +131,38 @@ export async function GET(request: NextRequest) {
     if (!messagesResponse.ok) {
       const error = await messagesResponse.text();
       console.error('Graph API error:', error);
+      
+      // Si erreur d'auth, reset la connexion
+      if (messagesResponse.status === 401) {
+        await prisma.user.update({
+          where: { id: session.user.id },
+          data: {
+            outlookConnected: false,
+            outlookAccessToken: null,
+            outlookRefreshToken: null,
+            outlookTokenExpiry: null,
+          },
+        });
+        return NextResponse.json({ connected: false, emails: [] });
+      }
+      
       throw new Error('Erreur lors de la récupération des emails');
     }
 
     const messagesData = await messagesResponse.json();
-    const messages = messagesData.value || [];
+    let messages = messagesData.value || [];
+    
+    // Filtrer côté client:
+    // 1. Les emails avec pièces jointes
+    // 2. Les emails qui ressemblent à des factures (par le sujet)
+    messages = messages.filter((msg: any) => {
+      // Doit avoir des pièces jointes
+      if (!msg.hasAttachments) return false;
+      
+      // Vérifier si le sujet contient des mots-clés de facture
+      const subject = (msg.subject || '').toLowerCase();
+      return INVOICE_KEYWORDS.some(keyword => subject.includes(keyword.toLowerCase()));
+    });
 
     // Pour chaque message, récupérer les pièces jointes
     const emailsWithAttachments = await Promise.all(

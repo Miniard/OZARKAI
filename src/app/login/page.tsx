@@ -88,8 +88,11 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <p className="mt-8 text-center text-sm text-slate-400">
-            En vous connectant, vous acceptez nos conditions d'utilisation.
+          <p className="mt-8 text-center text-sm text-slate-500">
+            Pas encore de compte ?{' '}
+            <Link href="/register" className="text-slate-900 font-medium hover:underline">
+              Créer un compte
+            </Link>
           </p>
         </div>
       </div>

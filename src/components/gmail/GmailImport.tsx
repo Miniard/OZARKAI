@@ -4,8 +4,8 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
+import { useState, useEffect, useCallback } from 'react';
+import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { 
   Mail, 
@@ -15,22 +15,27 @@ import {
   RefreshCw,
   FileText,
   Download,
-  Trash2,
   ExternalLink,
   Shield,
   Zap,
   Clock,
-  Filter,
   Search,
   Settings,
-  ChevronRight,
   Inbox,
-  Sparkles
+  Sparkles,
+  LogOut
 } from 'lucide-react';
 
 interface GmailImportProps {
   companyId: string;
   onImportComplete?: () => void;
+}
+
+interface EmailAttachment {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
 }
 
 interface EmailWithInvoice {
@@ -39,19 +44,14 @@ interface EmailWithInvoice {
   subject: string;
   from: string;
   date: string;
-  attachments: {
-    id: string;
-    filename: string;
-    mimeType: string;
-    size: number;
-  }[];
+  attachments: EmailAttachment[];
   isSelected: boolean;
   status: 'pending' | 'importing' | 'imported' | 'error';
 }
 
 export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
   const [isConnected, setIsConnected] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
   const [emails, setEmails] = useState<EmailWithInvoice[]>([]);
   const [selectedCount, setSelectedCount] = useState(0);
@@ -60,44 +60,79 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'pdf' | 'images'>('all');
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  // Simuler la vérification de connexion
-  useEffect(() => {
-    checkGmailConnection();
-  }, []);
-
-  const checkGmailConnection = async () => {
+  // Vérifier la connexion Gmail au chargement
+  const checkGmailConnection = useCallback(async () => {
     setIsLoading(true);
     try {
-      // TODO: Vérifier la connexion OAuth Gmail
-      // const response = await fetch('/api/gmail/status');
-      // const data = await response.json();
-      // setIsConnected(data.connected);
-      setIsConnected(false); // Pour la démo, non connecté par défaut
-    } catch (error) {
+      const response = await fetch('/api/gmail/status');
+      const data = await response.json();
+      
+      setIsConnected(data.connected);
+      setUserEmail(data.email);
+      
+      // Si connecté, scanner les emails automatiquement
+      if (data.connected) {
+        await scanEmails();
+      }
+    } catch (err) {
+      console.error('Error checking Gmail status:', err);
       setError('Erreur lors de la vérification de la connexion Gmail');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    checkGmailConnection();
+  }, [checkGmailConnection]);
+
+  // Vérifier le retour OAuth (paramètres URL)
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gmailStatus = urlParams.get('gmail');
+    
+    if (gmailStatus === 'success') {
+      setIsConnected(true);
+      scanEmails();
+      // Nettoyer l'URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (gmailStatus === 'error') {
+      setError('Erreur lors de la connexion à Gmail');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   const handleConnectGmail = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // TODO: Implémenter OAuth Gmail
-      // window.location.href = '/api/gmail/auth';
+      const response = await fetch('/api/gmail/authorize');
+      const data = await response.json();
       
-      // Simulation pour la démo
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setIsConnected(true);
-      
-      // Scanner les emails après connexion
-      await scanEmails();
-    } catch (error) {
+      if (data.authUrl) {
+        // Rediriger vers Google OAuth
+        window.location.href = data.authUrl;
+      } else {
+        setError('Impossible de démarrer la connexion Gmail');
+      }
+    } catch (err) {
+      console.error('Error connecting Gmail:', err);
       setError('Erreur lors de la connexion à Gmail');
-    } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDisconnectGmail = async () => {
+    try {
+      await fetch('/api/gmail/status', { method: 'DELETE' });
+      setIsConnected(false);
+      setEmails([]);
+      setUserEmail(null);
+    } catch (err) {
+      console.error('Error disconnecting Gmail:', err);
+      setError('Erreur lors de la déconnexion');
     }
   };
 
@@ -105,80 +140,32 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
     setIsScanning(true);
     setError(null);
     try {
-      // TODO: Appeler l'API pour scanner les emails
-      // const response = await fetch('/api/gmail/scan');
-      // const data = await response.json();
+      const response = await fetch('/api/gmail');
       
-      // Simulation pour la démo
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (!response.ok) {
+        const data = await response.json();
+        if (response.status === 401) {
+          // Token expiré, besoin de reconnecter
+          setIsConnected(false);
+          setError('Session expirée, veuillez reconnecter Gmail');
+          return;
+        }
+        throw new Error(data.error || 'Erreur lors du scan');
+      }
       
-      const mockEmails: EmailWithInvoice[] = [
-        {
-          id: '1',
-          threadId: 't1',
-          subject: 'Facture #2024-1234 - Services Cloud',
-          from: 'facturation@aws.amazon.com',
-          date: '2024-12-01',
-          attachments: [
-            { id: 'a1', filename: 'facture-aws-dec2024.pdf', mimeType: 'application/pdf', size: 245000 }
-          ],
-          isSelected: true,
-          status: 'pending'
-        },
-        {
-          id: '2',
-          threadId: 't2',
-          subject: 'Votre facture Orange Pro - Novembre 2024',
-          from: 'factures@orange.fr',
-          date: '2024-11-28',
-          attachments: [
-            { id: 'a2', filename: 'facture-orange-nov2024.pdf', mimeType: 'application/pdf', size: 189000 }
-          ],
-          isSelected: true,
-          status: 'pending'
-        },
-        {
-          id: '3',
-          threadId: 't3',
-          subject: 'Reçu de paiement - Abonnement Figma',
-          from: 'billing@figma.com',
-          date: '2024-11-25',
-          attachments: [
-            { id: 'a3', filename: 'receipt-figma.pdf', mimeType: 'application/pdf', size: 98000 }
-          ],
-          isSelected: true,
-          status: 'pending'
-        },
-        {
-          id: '4',
-          threadId: 't4',
-          subject: 'Facture Bureau Vallée - Fournitures',
-          from: 'commandes@bureau-vallee.fr',
-          date: '2024-11-20',
-          attachments: [
-            { id: 'a4', filename: 'facture-bv-2024.pdf', mimeType: 'application/pdf', size: 156000 }
-          ],
-          isSelected: false,
-          status: 'pending'
-        },
-        {
-          id: '5',
-          threadId: 't5',
-          subject: 'Invoice - GitHub Enterprise',
-          from: 'enterprise@github.com',
-          date: '2024-11-15',
-          attachments: [
-            { id: 'a5', filename: 'invoice-github.pdf', mimeType: 'application/pdf', size: 78000 }
-          ],
-          isSelected: true,
-          status: 'pending'
-        },
-      ];
+      const data = await response.json();
       
-      setEmails(mockEmails);
-      setSelectedCount(mockEmails.filter(e => e.isSelected).length);
+      const emailsWithSelection: EmailWithInvoice[] = (data.emails || []).map((email: Omit<EmailWithInvoice, 'isSelected' | 'status'>) => ({
+        ...email,
+        isSelected: true,
+        status: 'pending' as const,
+      }));
+      
+      setEmails(emailsWithSelection);
+      setSelectedCount(emailsWithSelection.length);
       setLastSync(new Date());
-    } catch (error) {
+    } catch (err) {
+      console.error('Error scanning emails:', err);
       setError('Erreur lors du scan des emails');
     } finally {
       setIsScanning(false);
@@ -209,35 +196,45 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
     if (selectedEmails.length === 0) return;
 
     setImportProgress(0);
+    let importedCount = 0;
     
-    for (let i = 0; i < selectedEmails.length; i++) {
-      const email = selectedEmails[i];
-      
+    for (const email of selectedEmails) {
       // Mettre à jour le statut
       setEmails(prev => prev.map(e => 
         e.id === email.id ? { ...e, status: 'importing' } : e
       ));
 
-      try {
-        // TODO: Appeler l'API pour importer la facture
-        // await fetch('/api/gmail/import', {
-        //   method: 'POST',
-        //   body: JSON.stringify({ emailId: email.id, companyId })
-        // });
-        
-        // Simulation
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        setEmails(prev => prev.map(e => 
-          e.id === email.id ? { ...e, status: 'imported' } : e
-        ));
-      } catch (error) {
-        setEmails(prev => prev.map(e => 
-          e.id === email.id ? { ...e, status: 'error' } : e
-        ));
+      // Importer chaque pièce jointe
+      for (const attachment of email.attachments) {
+        try {
+          const response = await fetch('/api/gmail', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              messageId: email.id,
+              attachmentId: attachment.id,
+              filename: attachment.filename,
+              companyId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Import failed');
+          }
+          
+          setEmails(prev => prev.map(e => 
+            e.id === email.id ? { ...e, status: 'imported' } : e
+          ));
+        } catch (err) {
+          console.error('Error importing attachment:', err);
+          setEmails(prev => prev.map(e => 
+            e.id === email.id ? { ...e, status: 'error' } : e
+          ));
+        }
       }
 
-      setImportProgress(Math.round(((i + 1) / selectedEmails.length) * 100));
+      importedCount++;
+      setImportProgress(Math.round((importedCount / selectedEmails.length) * 100));
     }
 
     onImportComplete?.();
@@ -250,12 +247,28 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
   };
 
   const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('fr-FR', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
+    try {
+      return new Date(dateStr).toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+      });
+    } catch {
+      return dateStr;
+    }
   };
+
+  // Loading initial
+  if (isLoading && !isConnected) {
+    return (
+      <Card padding="lg">
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+          <span className="ml-3 text-slate-600">Vérification de la connexion Gmail...</span>
+        </div>
+      </Card>
+    );
+  }
 
   // Vue non connectée
   if (!isConnected) {
@@ -270,9 +283,16 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
               </div>
               <div>
                 <h2 className="text-2xl font-bold">Connectez votre Gmail</h2>
-                <p className="text-primary-100">Importez automatiquement toutes vos factures</p>
+                <p className="text-red-100">Importez automatiquement toutes vos factures</p>
               </div>
             </div>
+            
+            {error && (
+              <div className="mb-6 p-3 bg-white/20 rounded-lg flex items-center gap-2 text-white">
+                <AlertCircle className="w-5 h-5" />
+                {error}
+              </div>
+            )}
             
             <div className="grid md:grid-cols-3 gap-4 mb-8">
               <div className="flex items-center gap-3 bg-white/10 rounded-xl p-4">
@@ -329,8 +349,8 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
         {/* Security notice */}
         <Card padding="md" className="bg-slate-50 border-slate-200">
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-xl bg-success-50 flex items-center justify-center flex-shrink-0">
-              <Shield className="w-5 h-5 text-success-600" />
+            <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center flex-shrink-0">
+              <Shield className="w-5 h-5 text-green-600" />
             </div>
             <div>
               <h4 className="font-medium text-slate-900 mb-1">Vos données sont protégées</h4>
@@ -352,13 +372,13 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
       <Card padding="md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-success-50 flex items-center justify-center">
-              <CheckCircle className="w-6 h-6 text-success-600" />
+            <div className="w-12 h-12 rounded-xl bg-green-50 flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-green-600" />
             </div>
             <div>
               <h3 className="font-semibold text-slate-900">Gmail connecté</h3>
               <p className="text-sm text-slate-500">
-                {lastSync ? `Dernière sync: ${lastSync.toLocaleString('fr-FR')}` : 'Synchronisation...'}
+                {userEmail || (lastSync ? `Dernière sync: ${lastSync.toLocaleString('fr-FR')}` : 'Synchronisation...')}
               </p>
             </div>
           </div>
@@ -375,13 +395,24 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
             <Button 
               variant="ghost" 
               size="sm"
-              leftIcon={<Settings className="w-4 h-4" />}
+              onClick={handleDisconnectGmail}
+              leftIcon={<LogOut className="w-4 h-4" />}
             >
-              Paramètres
+              Déconnecter
             </Button>
           </div>
         </div>
       </Card>
+
+      {/* Error Message */}
+      {error && (
+        <Card padding="md" className="bg-red-50 border-red-200">
+          <div className="flex items-center gap-3 text-red-700">
+            <AlertCircle className="w-5 h-5" />
+            <span>{error}</span>
+          </div>
+        </Card>
+      )}
 
       {/* Search & Filters */}
       <Card padding="md">
@@ -429,9 +460,9 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
               className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
             >
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                emails.every(e => e.isSelected) ? 'bg-primary-500 border-primary-500' : 'border-slate-300'
+                emails.length > 0 && emails.every(e => e.isSelected) ? 'bg-primary-500 border-primary-500' : 'border-slate-300'
               }`}>
-                {emails.every(e => e.isSelected) && <CheckCircle className="w-3 h-3 text-white" />}
+                {emails.length > 0 && emails.every(e => e.isSelected) && <CheckCircle className="w-3 h-3 text-white" />}
               </div>
               Tout sélectionner
             </button>
@@ -463,15 +494,24 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {emails.map((email) => (
-              <EmailRow 
-                key={email.id}
-                email={email}
-                onToggle={() => toggleEmailSelection(email.id)}
-                formatFileSize={formatFileSize}
-                formatDate={formatDate}
-              />
-            ))}
+            {emails
+              .filter(email => {
+                if (searchQuery) {
+                  const query = searchQuery.toLowerCase();
+                  return email.subject.toLowerCase().includes(query) || 
+                         email.from.toLowerCase().includes(query);
+                }
+                return true;
+              })
+              .map((email) => (
+                <EmailRow 
+                  key={email.id}
+                  email={email}
+                  onToggle={() => toggleEmailSelection(email.id)}
+                  formatFileSize={formatFileSize}
+                  formatDate={formatDate}
+                />
+              ))}
           </div>
         )}
       </Card>
@@ -504,7 +544,7 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
    SUB-COMPONENTS
    =========================================== */
 
-function StepItem({ number, title, description, icon }: { 
+function StepItem({ number, title, description }: { 
   number: number; 
   title: string; 
   description: string;
@@ -551,15 +591,15 @@ function EmailRow({ email, onToggle, formatFileSize, formatDate }: {
   const statusStyles = {
     pending: '',
     importing: 'bg-primary-50',
-    imported: 'bg-success-50',
-    error: 'bg-danger-50',
+    imported: 'bg-green-50',
+    error: 'bg-red-50',
   };
 
   const statusIcons = {
     pending: null,
     importing: <Loader2 className="w-4 h-4 text-primary-500 animate-spin" />,
-    imported: <CheckCircle className="w-4 h-4 text-success-600" />,
-    error: <AlertCircle className="w-4 h-4 text-danger-600" />,
+    imported: <CheckCircle className="w-4 h-4 text-green-600" />,
+    error: <AlertCircle className="w-4 h-4 text-red-600" />,
   };
 
   return (
@@ -616,5 +656,4 @@ function EmailRow({ email, onToggle, formatFileSize, formatDate }: {
     </div>
   );
 }
-
 

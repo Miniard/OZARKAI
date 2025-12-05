@@ -2,53 +2,16 @@
 
 import { useState } from 'react';
 import { signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, Lock, User, AlertCircle, Loader2 } from 'lucide-react';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-
-    try {
-      const res = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Erreur lors de l\'inscription');
-        return;
-      }
-
-      // Auto login
-      await signIn('credentials', {
-        email,
-        password,
-        callbackUrl: '/dashboard',
-      });
-    } catch {
-      setError('Une erreur est survenue');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleOAuth = (provider: string) => {
     setOauthLoading(provider);
+    setError('');
     signIn(provider, { callbackUrl: '/dashboard' });
   };
 
@@ -80,12 +43,12 @@ export default function RegisterPage() {
           )}
 
           {/* OAuth Buttons */}
-          <div className="space-y-3 mb-6">
+          <div className="space-y-3">
             {/* Google */}
             <button
               onClick={() => handleOAuth('google')}
               disabled={oauthLoading !== null}
-              className="w-full h-11 flex items-center justify-center gap-3 bg-white border border-slate-300 rounded-lg font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="w-full h-12 flex items-center justify-center gap-3 bg-white border-2 border-slate-200 rounded-xl font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50"
             >
               {oauthLoading === 'google' ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -106,7 +69,7 @@ export default function RegisterPage() {
             <button
               onClick={() => handleOAuth('microsoft-entra-id')}
               disabled={oauthLoading !== null}
-              className="w-full h-11 flex items-center justify-center gap-3 bg-white border border-slate-300 rounded-lg font-medium text-slate-700 hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="w-full h-12 flex items-center justify-center gap-3 bg-white border-2 border-slate-200 rounded-xl font-medium text-slate-700 hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50"
             >
               {oauthLoading === 'microsoft-entra-id' ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -122,79 +85,7 @@ export default function RegisterPage() {
                 </>
               )}
             </button>
-
           </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="flex-1 h-px bg-slate-200" />
-            <span className="text-sm text-slate-400">ou par email</span>
-            <div className="flex-1 h-px bg-slate-200" />
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Nom complet
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Jean Dupont"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  required
-                  className="w-full h-11 pl-10 pr-4 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="email"
-                  placeholder="vous@exemple.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  className="w-full h-11 pl-10 pr-4 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">
-                Mot de passe
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                <input
-                  type="password"
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                  className="w-full h-11 pl-10 pr-4 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
-                />
-              </div>
-              <p className="mt-1.5 text-xs text-slate-500">Minimum 8 caractères</p>
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full h-11 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors disabled:opacity-50 flex items-center justify-center"
-            >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Créer mon compte'}
-            </button>
-          </form>
 
           {/* Terms */}
           <p className="mt-6 text-xs text-slate-500 text-center">

@@ -16,8 +16,10 @@ import {
   Calendar,
   AlertTriangle,
   Download,
-  FileJson
+  FileJson,
+  MessageCircle
 } from 'lucide-react';
+import { WhatsAppSetup } from '@/components/whatsapp/WhatsAppSetup';
 
 interface UserProfile {
   id: string;
@@ -274,6 +276,20 @@ export function SettingsPage() {
             </div>
           </div>
         </div>
+      </Card>
+
+      {/* WhatsApp Business */}
+      <Card padding="lg">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
+            <MessageCircle className="w-5 h-5 text-green-500" />
+          </div>
+          <div>
+            <h2 className="text-lg font-semibold text-slate-900">WhatsApp Business</h2>
+            <p className="text-sm text-slate-500">Envoyez vos factures par WhatsApp</p>
+          </div>
+        </div>
+        <WhatsAppSetup />
       </Card>
 
       {/* Zone de danger */}

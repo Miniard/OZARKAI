@@ -51,22 +51,45 @@ export function OutlookImport({ companyId, onImportComplete }: OutlookImportProp
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    checkConnection();
+    checkConnectionStatus();
   }, []);
 
-  const checkConnection = async () => {
+  // Vérifier seulement le status (pas les emails)
+  const checkConnectionStatus = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/outlook');
+      const response = await fetch('/api/outlook?action=status');
       const data = await response.json();
       setIsConnected(data.connected);
-      if (data.connected && data.emails) {
-        setEmails(data.emails.map((e: any) => ({ ...e, isSelected: false, status: 'pending' })));
+      
+      // Si connecté, scanner automatiquement les emails
+      if (data.connected) {
+        await scanEmails();
       }
     } catch (error) {
       console.error('Erreur vérification connexion:', error);
+      setIsConnected(false);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Scanner les emails (séparé du check status)
+  const scanEmails = async () => {
+    try {
+      const response = await fetch('/api/outlook');
+      const data = await response.json();
+      
+      if (!data.connected) {
+        setIsConnected(false);
+        return;
+      }
+      
+      if (data.emails) {
+        setEmails(data.emails.map((e: any) => ({ ...e, isSelected: false, status: 'pending' })));
+      }
+    } catch (error) {
+      console.error('Erreur scan emails:', error);
     }
   };
 
@@ -93,12 +116,14 @@ export function OutlookImport({ companyId, onImportComplete }: OutlookImportProp
     setIsScanning(true);
     setError(null);
     try {
-      const params = new URLSearchParams();
-      if (startDate) params.append('startDate', startDate);
-      if (endDate) params.append('endDate', endDate);
-
-      const response = await fetch(`/api/outlook?${params.toString()}`);
+      const response = await fetch('/api/outlook');
       const data = await response.json();
+      
+      if (!data.connected) {
+        setIsConnected(false);
+        setEmails([]);
+        return;
+      }
       
       if (data.emails) {
         setEmails(data.emails.map((e: any) => ({ ...e, isSelected: false, status: 'pending' })));

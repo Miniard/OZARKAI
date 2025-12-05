@@ -206,33 +206,6 @@ export default function DashboardPage() {
                 {generatingTestData ? '⏳...' : '🧪 Test Data'}
               </Button>
 
-              {/* Export Tools (Only on Dashboard) */}
-              {activeTab === 'dashboard' && insights.length > 0 && (
-                <>
-                  <Button
-                    onClick={() => {
-                      const c = companies.find(x => x.id === selectedCompanyId);
-                      if (c) downloadInsightsPDF(insights, c.name);
-                    }}
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<FileDown className="w-4 h-4" />}
-                  >
-                    PDF
-                  </Button>
-                  <Button
-                    onClick={() => {
-                      const c = companies.find(x => x.id === selectedCompanyId);
-                      if (c) downloadInsightsExcel(insights, c.name);
-                    }}
-                    variant="outline"
-                    size="sm"
-                    leftIcon={<FileSpreadsheet className="w-4 h-4" />}
-                  >
-                    Excel
-                  </Button>
-                </>
-              )}
             </div>
           </div>
         </header>
@@ -420,7 +393,13 @@ export default function DashboardPage() {
                     {/* Detail Preview */}
                     <Card padding="lg" className="hidden lg:block sticky top-32 h-fit">
                       {selectedDocument ? (
-                        <DocumentDetail document={selectedDocument} />
+                        <DocumentDetail 
+                          document={selectedDocument} 
+                          onAnalyzed={() => {
+                            setRefreshKey(p => p + 1);
+                            fetchDocuments();
+                          }}
+                        />
                       ) : (
                         <div className="h-80 flex flex-col items-center justify-center text-slate-400">
                           <Search className="w-12 h-12 mb-4 opacity-50" />

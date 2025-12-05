@@ -9,7 +9,7 @@ import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { formatCurrency, formatDateShort } from '@/lib/utils';
-import { FileText, Calendar, Building2, CreditCard, CheckCircle2, AlertCircle, TrendingDown, TrendingUp, Eye, X, Download, Maximize2 } from 'lucide-react';
+import { FileText, Calendar, Building2, CreditCard, CheckCircle2, AlertCircle, TrendingDown, TrendingUp, Eye, X, Download, Maximize2, Sparkles, Loader2 } from 'lucide-react';
 
 interface DocumentDetailProps {
   document: {
@@ -25,31 +25,90 @@ interface DocumentDetailProps {
     analyzed: boolean;
     analysisData: any;
   };
+  onAnalyzed?: () => void;
 }
 
-export function DocumentDetail({ document }: DocumentDetailProps) {
+export function DocumentDetail({ document, onAnalyzed }: DocumentDetailProps) {
   const [showPreview, setShowPreview] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   
   const isPDF = document.fileType === 'pdf' || document.filename?.toLowerCase().endsWith('.pdf');
   const isImage = document.fileType?.startsWith('image') || 
     /\.(jpg|jpeg|png|gif|webp)$/i.test(document.filename || '');
+
+  const handleAnalyze = async () => {
+    setIsAnalyzing(true);
+    setAnalyzeError(null);
+    
+    try {
+      const response = await fetch('/api/documents/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: document.id }),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Erreur lors de l\'analyse');
+      }
+      
+      // Recharger la page ou le composant
+      if (onAnalyzed) {
+        onAnalyzed();
+      } else {
+        window.location.reload();
+      }
+    } catch (error) {
+      setAnalyzeError(error instanceof Error ? error.message : 'Erreur inconnue');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   if (!document.analyzed || !document.analysisData) {
     return (
       <Card className="border-amber-200 bg-amber-50">
         <CardContent className="py-8 text-center">
           <AlertCircle className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <p className="text-slate-600">Ce document n'a pas encore été analysé</p>
-          {document.fileUrl && (
-            <Button 
-              variant="outline" 
-              className="mt-4"
-              onClick={() => setShowPreview(true)}
-            >
-              <Eye className="w-4 h-4 mr-2" />
-              Voir le document
-            </Button>
+          <p className="text-slate-600 mb-4">Ce document n'a pas encore été analysé</p>
+          
+          {analyzeError && (
+            <div className="mb-4 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
+              {analyzeError}
+            </div>
           )}
+          
+          <div className="flex items-center justify-center gap-3">
+            <Button 
+              onClick={handleAnalyze}
+              disabled={isAnalyzing}
+              className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Analyse en cours...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" />
+                  Analyser avec l'IA
+                </>
+              )}
+            </Button>
+            
+            {document.fileUrl && (
+              <Button 
+                variant="outline" 
+                onClick={() => setShowPreview(true)}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                Voir
+              </Button>
+            )}
+          </div>
         </CardContent>
         
         {/* Modal Preview */}
