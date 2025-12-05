@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('✅ Document trouvé:', document.fileName);
+    console.log('✅ Document trouvé:', document.filename);
 
     // Vérifier si déjà analysé
     if (document.analyzed) {
