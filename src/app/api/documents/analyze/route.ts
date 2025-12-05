@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Vérifier que l'utilisateur a accès
-    if (document.company.ownerId !== session.user.id) {
+    if (document.company.userId !== session.user.id) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
