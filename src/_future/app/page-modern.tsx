@@ -44,13 +44,13 @@ interface FiscalOptimization {
     howTo: string;
     link: string;
     savings: number;
-  }> | string[];
+  }>;
   warnings: string[];
   nextSteps: Array<{
     step: string;
     deadline: string;
     howTo: string;
-  }> | string[];
+  }>;
 }
 
 export default function OptimisationFiscaleModernPage() {
