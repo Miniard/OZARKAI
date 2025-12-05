@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { downloadBilanPDF } from '@/lib/export/pdf';
-import { downloadBilanExcel } from '@/lib/export/excel';
+import { downloadBilanPDF } from '../../lib/export/pdf';
+import { downloadBilanExcel } from '../../lib/export/excel';
 import { FileDown, FileSpreadsheet } from 'lucide-react';
 
 interface BilanData {
