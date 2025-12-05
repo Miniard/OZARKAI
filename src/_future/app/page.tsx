@@ -3,8 +3,8 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FiscalOptimizationWizard } from '@/components/fiscal/FiscalOptimizationWizard';
-import { FiscalOptimizationResults } from '@/components/fiscal/FiscalOptimizationResults';
+import { FiscalOptimizationWizard } from '../components/fiscal/FiscalOptimizationWizard';
+import { FiscalOptimizationResults } from '../components/fiscal/FiscalOptimizationResults';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
 import { ArrowLeft, LogOut, Calculator } from 'lucide-react';

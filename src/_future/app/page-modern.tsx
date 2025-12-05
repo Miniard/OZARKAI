@@ -3,8 +3,8 @@
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { FiscalOptimizationWizard } from '@/components/fiscal/FiscalOptimizationWizard';
-import { FiscalOptimizationResults } from '@/components/fiscal/FiscalOptimizationResults';
+import { FiscalOptimizationWizard } from '../components/fiscal/FiscalOptimizationWizard';
+import { FiscalOptimizationResults } from '../components/fiscal/FiscalOptimizationResults';
 
 interface FiscalOptimization {
   currentSituation: {
