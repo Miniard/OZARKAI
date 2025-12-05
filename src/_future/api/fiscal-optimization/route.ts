@@ -73,7 +73,7 @@ Pour chaque optimisation, tu DOIS donner :
       "advantages": ["string"],
       "requirements": ["string"],
       "estimatedSavings": number, // Économies estimées (€)
-      "difficulty": "FACILE" | "MOYEN" | "DIFFICILE",
+      "difficulty": "FACILE" | "MOYEN" | "COMPLEXE",
       "legalRisk": "FAIBLE" | "MOYEN" | "ÉLEVÉ",
       "implementationTime": "string",
       "actionSteps": ["string"], // Étapes concrètes à suivre (IMPORTANT !)

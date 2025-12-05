@@ -18,7 +18,7 @@ interface FiscalOptimization {
     advantages: string[];
     requirements: string[];
     estimatedSavings: number;
-    difficulty: 'FACILE' | 'MOYEN' | 'DIFFICILE';
+    difficulty: 'FACILE' | 'MOYEN' | 'COMPLEXE';
     legalRisk: 'FAIBLE' | 'MOYEN' | 'ÉLEVÉ';
     implementationTime: string;
     actionSteps?: string[];
