@@ -155,7 +155,7 @@ export function analyzeCashflow(data: CompanyFinancialData): {
     details = `Votre marge nette n'est que de ${margin.toFixed(1)}%. Vous générez seulement ${cashflow.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })} de trésorerie. C'est trop faible pour être viable.`;
   } else {
     trend = 'negative';
-    recommendation = '🚨 **ALERTE : Trésorerie négative !** Vos dépenses dépassent vos revenus de ${Math.abs(cashflow).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}. Agissez IMMÉDIATEMENT.';
+    recommendation = `🚨 **ALERTE : Trésorerie négative !** Vos dépenses dépassent vos revenus de ${Math.abs(cashflow).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}. Agissez IMMÉDIATEMENT.`;
     details = `Vous êtes en déficit de ${Math.abs(cashflow).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })}. Réduisez drastiquement vos charges ou augmentez rapidement vos revenus.`;
   }
 

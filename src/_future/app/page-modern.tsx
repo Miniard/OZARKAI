@@ -129,9 +129,9 @@ export default function OptimisationFiscaleModernPage() {
 
         {/* Content */}
         {!optimization ? (
-          <FiscalOptimizationWizard onSubmit={handleSubmit} loading={loading} />
+          <FiscalOptimizationWizard onAnalysisComplete={handleSubmit} />
         ) : (
-          <FiscalOptimizationResults optimization={optimization} onReset={handleReset} />
+          <FiscalOptimizationResults results={optimization} onBack={handleReset} />
         )}
       </div>
     </div>

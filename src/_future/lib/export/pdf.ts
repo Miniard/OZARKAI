@@ -113,12 +113,12 @@ export function generateBilanPDF(data: BilanData) {
   doc.text('GRAND LIVRE - DÉTAIL DES ÉCRITURES', 15, yPos);
   
   yPos += 10;
-  const documentRows = data.documents.map(doc => [
-    new Date(doc.date).toLocaleDateString('fr-FR'),
-    doc.type,
-    doc.supplier || '-',
-    doc.category,
-    doc.amount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }),
+  const documentRows = data.documents.map(document => [
+    new Date(document.date).toLocaleDateString('fr-FR'),
+    document.type,
+    document.supplier || '-',
+    document.category,
+    document.amount.toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' }),
   ]);
   
   autoTable(doc, {
