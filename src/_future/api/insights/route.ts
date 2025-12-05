@@ -222,7 +222,7 @@ export async function GET(request: Request) {
     // Vérifier les factures récentes
     const last30Days = new Date();
     last30Days.setDate(last30Days.getDate() - 30);
-    const recentDocs = documents.filter(d => d.date >= last30Days);
+    const recentDocs = documents.filter(d => d.date && d.date >= last30Days);
 
     if (recentDocs.length === 0 && documents.length > 0) {
       insights.push({
