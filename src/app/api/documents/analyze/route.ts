@@ -213,7 +213,7 @@ export async function PUT(request: NextRequest) {
       where: { id: companyId },
     });
 
-    if (!company || company.ownerId !== session.user.id) {
+    if (!company || company.userId !== session.user.id) {
       return NextResponse.json({ error: 'Accès refusé' }, { status: 403 });
     }
 
