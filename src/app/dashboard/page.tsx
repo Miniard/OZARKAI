@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [selectedType, setSelectedType] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [generatingTestData, setGeneratingTestData] = useState(false);
+  const [companyCreationAttempted, setCompanyCreationAttempted] = useState(false);
 
   // Auth Check
   useEffect(() => {
@@ -73,13 +74,15 @@ export default function DashboardPage() {
       if (response.ok) {
         let data = await response.json();
         
-        // Si aucune entreprise, en créer une automatiquement
-        if (data.length === 0 && session?.user?.name) {
+        // Si aucune entreprise, en créer une automatiquement (une seule fois)
+        if (data.length === 0 && session?.user?.email && !companyCreationAttempted) {
+          setCompanyCreationAttempted(true);
+          const userName = session.user.name || session.user.email.split('@')[0];
           const createResponse = await fetch('/api/companies', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              name: `Entreprise de ${session.user.name}`,
+              name: `Entreprise de ${userName}`,
             }),
           });
           if (createResponse.ok) {
