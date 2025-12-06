@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
     const action = searchParams.get('action');
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       select: {
         id: true,
         outlookConnected: true,
@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
     } catch (e) {
       // Token invalide, reset connection
       await prisma.user.update({
-        where: { id: session.user.id },
+        where: { email: session.user.email },
         data: {
           outlookConnected: false,
           outlookAccessToken: null,
@@ -137,7 +137,7 @@ export async function GET(request: NextRequest) {
       // Si erreur d'auth, reset la connexion
       if (messagesResponse.status === 401) {
         await prisma.user.update({
-          where: { id: session.user.id },
+          where: { email: session.user.email },
           data: {
             outlookConnected: false,
             outlookAccessToken: null,
@@ -231,7 +231,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
@@ -243,8 +243,9 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       select: {
+        id: true,
         outlookAccessToken: true,
         outlookRefreshToken: true,
         outlookTokenExpiry: true,
@@ -255,7 +256,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Outlook non connecté' }, { status: 400 });
     }
 
-    const accessToken = await getValidAccessToken({ ...user, id: session.user.id });
+    const accessToken = await getValidAccessToken(user);
 
     const results: { success: number; errors: number } = { success: 0, errors: 0 };
 

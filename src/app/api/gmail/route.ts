@@ -80,12 +80,12 @@ async function getValidAccessToken(user: {
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       select: {
         id: true,
         gmailConnected: true,
@@ -95,8 +95,12 @@ export async function GET() {
       },
     });
 
-    if (!user?.gmailConnected) {
-      return NextResponse.json({ error: 'Gmail non connecté' }, { status: 400 });
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
+    }
+
+    if (!user.gmailConnected) {
+      return NextResponse.json({ error: 'Gmail non connecté', connected: false }, { status: 400 });
     }
 
     const accessToken = await getValidAccessToken(user);
@@ -206,7 +210,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
@@ -218,7 +222,7 @@ export async function POST(request: NextRequest) {
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       select: {
         id: true,
         gmailConnected: true,
@@ -228,7 +232,11 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    if (!user?.gmailConnected) {
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
+    }
+
+    if (!user.gmailConnected) {
       return NextResponse.json({ error: 'Gmail non connecté' }, { status: 400 });
     }
 

@@ -12,12 +12,12 @@ import { prisma } from '@/lib/db/prisma';
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       select: {
         gmailConnected: true,
         gmailTokenExpiry: true,
@@ -26,7 +26,7 @@ export async function GET() {
     });
 
     if (!user) {
-      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
+      return NextResponse.json({ connected: false, email: session.user.email });
     }
 
     // Vérifier si le token est expiré
@@ -47,12 +47,12 @@ export async function GET() {
 export async function DELETE() {
   try {
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       data: {
         gmailConnected: false,
         gmailAccessToken: null,
