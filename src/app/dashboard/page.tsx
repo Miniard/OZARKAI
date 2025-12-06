@@ -281,7 +281,7 @@ export default function DashboardPage() {
             {activeTab === 'upload' && loadingState === 'ready' && (
               <div className="max-w-3xl mx-auto">
                 <UploadDocumentModern
-                  companyId={selectedCompanyId}
+                  companyId={selectedCompanyId || ''}
                   onUploadComplete={() => {
                     setRefreshKey(p => p + 1);
                     setActiveTab('documents');
