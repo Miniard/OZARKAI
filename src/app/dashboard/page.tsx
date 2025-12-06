@@ -273,7 +273,7 @@ export default function DashboardPage() {
                 })()}
 
                 {/* Main Charts & KPIs */}
-                <Dashboard key={refreshKey} companyId={selectedCompanyId} />
+                <Dashboard key={refreshKey} companyId={selectedCompanyId || ''} />
               </>
             )}
 
