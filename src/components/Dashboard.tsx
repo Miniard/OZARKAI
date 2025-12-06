@@ -98,10 +98,11 @@ export function Dashboard({ companyId }: DashboardProps) {
 
   if (error) {
     return (
-      <Card className="bg-danger-50 border-danger-200">
-        <CardContent className="py-6">
-          <p className="font-medium text-danger-700">Erreur</p>
-          <p className="text-sm text-danger-600">{error}</p>
+      <Card className="bg-amber-50 border-amber-200">
+        <CardContent className="py-8 text-center">
+          <FileText className="w-12 h-12 text-amber-400 mx-auto mb-4" />
+          <p className="font-medium text-amber-700">Aucune donnée à afficher</p>
+          <p className="text-sm text-amber-600 mt-2">Importez vos premières factures depuis Gmail ou Outlook pour voir vos statistiques</p>
         </CardContent>
       </Card>
     );

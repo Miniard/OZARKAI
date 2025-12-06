@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
 
     // Authentification
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Non authentifié' },
         { status: 401 }
@@ -39,11 +39,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Trouver l'utilisateur par email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Utilisateur non trouvé' },
+        { status: 404 }
+      );
+    }
+
     // Vérifier l'accès
     const company = await prisma.company.findFirst({
       where: {
         id: companyId,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 
