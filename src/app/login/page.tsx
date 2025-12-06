@@ -1,13 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const [error, setError] = useState('');
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+
+  useEffect(() => {
+    const errorParam = searchParams.get('error');
+    if (errorParam) {
+      const errorMessages: Record<string, string> = {
+        'AccessDenied': 'Accès refusé. Vérifiez vos permissions.',
+        'Configuration': 'Erreur de configuration du serveur.',
+        'Verification': 'Le lien de vérification a expiré.',
+        'OAuthSignin': 'Erreur lors de la connexion OAuth.',
+        'OAuthCallback': 'Erreur lors du callback OAuth.',
+        'OAuthCreateAccount': 'Impossible de créer le compte.',
+        'EmailCreateAccount': 'Impossible de créer le compte email.',
+        'Callback': 'Erreur lors du callback.',
+        'OAuthAccountNotLinked': 'Cet email est déjà lié à un autre compte.',
+        'Default': 'Une erreur est survenue.',
+      };
+      setError(errorMessages[errorParam] || `Erreur: ${errorParam}`);
+    }
+  }, [searchParams]);
 
   const handleOAuth = (provider: string) => {
     setOauthLoading(provider);

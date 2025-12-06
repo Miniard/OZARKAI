@@ -108,43 +108,59 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
   callbacks: {
     async signIn({ user, account }) {
-      if (account?.provider !== 'credentials') {
-        // OAuth : créer l'utilisateur s'il n'existe pas
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-        });
-
-        if (!existingUser) {
-          await prisma.user.create({
-            data: {
-              email: user.email!,
-              name: user.name,
-              role: 'USER',
-              passwordHash: '',
-            },
+      try {
+        if (account?.provider !== 'credentials') {
+          // OAuth : créer l'utilisateur s'il n'existe pas
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! },
           });
+
+          if (!existingUser) {
+            await prisma.user.create({
+              data: {
+                email: user.email!,
+                name: user.name,
+                role: 'USER',
+                passwordHash: '',
+              },
+            });
+          }
         }
+        return true;
+      } catch (error) {
+        console.error('SignIn callback error:', error);
+        // Retourner true quand même pour permettre la connexion
+        // L'utilisateur sera créé lors de la prochaine requête
+        return true;
       }
-      return true;
     },
 
     async jwt({ token, user, account }) {
-      if (user) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-        });
+      try {
+        if (user) {
+          const dbUser = await prisma.user.findUnique({
+            where: { email: user.email! },
+          });
+          
+          token.id = dbUser?.id || user.id;
+          token.role = dbUser?.role || 'USER';
+          token.provider = account?.provider;
+        }
         
-        token.id = dbUser?.id || user.id;
-        token.role = dbUser?.role || 'USER';
-        token.provider = account?.provider;
-      }
-      
-      // Sauvegarder le refresh token pour Gmail plus tard
-      if (account?.refresh_token) {
-        token.refreshToken = account.refresh_token;
-      }
-      if (account?.access_token) {
-        token.accessToken = account.access_token;
+        // Sauvegarder le refresh token pour Gmail plus tard
+        if (account?.refresh_token) {
+          token.refreshToken = account.refresh_token;
+        }
+        if (account?.access_token) {
+          token.accessToken = account.access_token;
+        }
+      } catch (error) {
+        console.error('JWT callback error:', error);
+        // Utiliser des valeurs par défaut
+        if (user) {
+          token.id = user.id;
+          token.role = 'USER';
+        }
       }
       
       return token;
@@ -173,6 +189,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   },
 
   secret: process.env.NEXTAUTH_SECRET,
+  
+  // Important pour Vercel
+  trustHost: true,
+  debug: process.env.NODE_ENV === 'development',
 });
 
 export const authOptions = {
