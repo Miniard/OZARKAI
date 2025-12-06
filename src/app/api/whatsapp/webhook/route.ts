@@ -2,7 +2,7 @@
  * API : WhatsApp Business Webhook
  * 
  * Reçoit les messages WhatsApp avec factures
- * et les importe automatiquement dans OZARKAI
+ * et les importe automatiquement dans Komptal
  * 
  * Configuration requise :
  * 1. Créer une app sur Meta for Developers
@@ -80,8 +80,8 @@ async function processMessage(message: any, phoneNumberId: string) {
   if (!user) {
     console.log('⚠️ Utilisateur non trouvé pour ce numéro WhatsApp');
     await sendWhatsAppMessage(phoneNumberId, from, 
-      '❌ Votre numéro n\'est pas lié à un compte OZARKAI.\n\n' +
-      'Connectez-vous sur ozarkai.com et ajoutez votre numéro dans les paramètres.'
+      '❌ Votre numéro n\'est pas lié à un compte Komptal.\n\n' +
+      'Connectez-vous sur komptal.com et ajoutez votre numéro dans les paramètres.'
     );
     return;
   }
@@ -90,7 +90,7 @@ async function processMessage(message: any, phoneNumberId: string) {
   if (!company) {
     await sendWhatsAppMessage(phoneNumberId, from,
       '⚠️ Aucune entreprise trouvée sur votre compte.\n' +
-      'Créez d\'abord une entreprise sur ozarkai.com'
+      'Créez d\'abord une entreprise sur komptal.com'
     );
     return;
   }
@@ -174,7 +174,7 @@ async function handleImageMessage(
       } else {
         await sendWhatsAppMessage(phoneNumberId, from,
           '⚠️ L\'analyse automatique a échoué.\n' +
-          'La facture a été importée, vous pouvez l\'analyser sur ozarkai.com'
+          'La facture a été importée, vous pouvez l\'analyser sur komptal.com'
         );
       }
     } catch (e) {
@@ -185,7 +185,7 @@ async function handleImageMessage(
     console.error('Erreur traitement image:', error);
     await sendWhatsAppMessage(phoneNumberId, from,
       '❌ Erreur lors du traitement de l\'image.\n' +
-      'Veuillez réessayer ou importer sur ozarkai.com'
+      'Veuillez réessayer ou importer sur komptal.com'
     );
   }
 }
@@ -262,7 +262,7 @@ async function handleDocumentMessage(
     } else {
       await sendWhatsAppMessage(phoneNumberId, from,
         '📄 Document PDF importé !\n\n' +
-        'Consultez ozarkai.com pour voir les détails et l\'analyser.'
+        'Consultez komptal.com pour voir les détails et l\'analyser.'
       );
     }
 
@@ -284,14 +284,14 @@ async function handleTextMessage(
 
   if (text.includes('aide') || text.includes('help')) {
     await sendWhatsAppMessage(phoneNumberId, from,
-      '🤖 *OZARKAI Bot*\n\n' +
+      '🤖 *Komptal Bot*\n\n' +
       'Envoyez-moi vos factures (photo ou PDF) et je les importerai automatiquement !\n\n' +
       '*Commandes :*\n' +
       '• 📸 Envoyez une photo de facture\n' +
       '• 📄 Envoyez un PDF\n' +
       '• "stats" - Voir vos statistiques\n' +
       '• "aide" - Ce message\n\n' +
-      'Plus d\'options sur ozarkai.com 🌐'
+      'Plus d\'options sur komptal.com 🌐'
     );
   } else if (text.includes('stats') || text.includes('statistiques')) {
     // Récupérer les stats
@@ -313,7 +313,7 @@ async function handleTextMessage(
         `📄 Documents : ${docCount}\n` +
         `✅ Analysés : ${analyzedCount}\n` +
         `💰 Total : ${(totalAmount._sum.amount || 0).toLocaleString('fr-FR')} €\n\n` +
-        'Plus de détails sur ozarkai.com'
+        'Plus de détails sur komptal.com'
       );
     }
   } else {
@@ -444,7 +444,7 @@ function formatAnalysisSummary(analysis: any): string {
     lines.push(`#️⃣ N° ${analysis.numero}`);
   }
 
-  lines.push('\n📱 Plus de détails sur ozarkai.com');
+  lines.push('\n📱 Plus de détails sur komptal.com');
 
   return lines.join('\n');
 }

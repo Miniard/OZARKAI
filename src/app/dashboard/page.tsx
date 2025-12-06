@@ -244,7 +244,7 @@ export default function DashboardPage() {
                     <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Building2 className="w-8 h-8 text-primary-600" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Bienvenue sur OZARKAI !</h3>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Bienvenue sur Komptal !</h3>
                     <p className="text-slate-600 mb-6">
                       Pour commencer, créez votre première entreprise en cliquant sur le sélecteur d&apos;entreprise en haut à gauche.
                     </p>

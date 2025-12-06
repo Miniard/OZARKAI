@@ -141,7 +141,7 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
             <ol className="space-y-2 text-sm text-slate-600">
               <li className="flex items-start gap-2">
                 <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700">1</span>
-                <span>Ajoutez le numéro OZARKAI à vos contacts</span>
+                <span>Ajoutez le numéro Komptal à vos contacts</span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700">2</span>
@@ -270,7 +270,7 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
         {/* Note */}
         <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <p className="text-sm text-amber-800">
-            <strong>📝 Note :</strong> Après activation, vous pourrez envoyer vos factures au numéro OZARKAI. 
+            <strong>📝 Note :</strong> Après activation, vous pourrez envoyer vos factures au numéro Komptal. 
             Assurez-vous d'envoyer depuis le numéro enregistré ci-dessus.
           </p>
         </div>
