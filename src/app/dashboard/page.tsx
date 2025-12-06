@@ -49,9 +49,7 @@ export default function DashboardPage() {
   const [selectedType, setSelectedType] = useState('ALL');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [generatingTestData, setGeneratingTestData] = useState(false);
-  const [companyCreationAttempted, setCompanyCreationAttempted] = useState(false);
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
 
   // Auth Check
   useEffect(() => {
@@ -75,46 +73,19 @@ export default function DashboardPage() {
       setLoadingState('loading');
       const response = await fetch('/api/companies');
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error:', response.status, errorData);
-        setErrorMessage(`Erreur ${response.status}: ${errorData.error || 'Connexion échouée'}`);
-        setLoadingState('error');
-        return;
-      }
-      
-      let data = await response.json();
-      
-      // Si aucune entreprise, en créer une automatiquement (une seule fois)
-      if (data.length === 0 && session?.user?.email && !companyCreationAttempted) {
-        setCompanyCreationAttempted(true);
-        const userName = session.user.name || session.user.email.split('@')[0];
-        const createResponse = await fetch('/api/companies', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: `Entreprise de ${userName}`,
-          }),
-        });
-        if (createResponse.ok) {
-          const newCompany = await createResponse.json();
-          data = [newCompany];
-        } else {
-          const errorData = await createResponse.json().catch(() => ({}));
-          console.error('Create company error:', createResponse.status, errorData);
-          setErrorMessage(`Impossible de créer l'entreprise: ${errorData.error || 'Erreur serveur'}`);
-          setLoadingState('error');
-          return;
+      if (response.ok) {
+        const data = await response.json();
+        setCompanies(data);
+        if (data.length > 0 && !selectedCompanyId) {
+          setSelectedCompanyId(data[0].id);
         }
       }
-      
-      setCompanies(data);
-      if (data.length > 0 && !selectedCompanyId) setSelectedCompanyId(data[0].id);
+      // Même si pas d'entreprise, on affiche le dashboard
       setLoadingState('ready');
     } catch (error) {
       console.error('Error fetching companies:', error);
-      setErrorMessage('Erreur de connexion au serveur');
-      setLoadingState('error');
+      // On continue quand même - le dashboard fonctionnera sans entreprise
+      setLoadingState('ready');
     }
   };
 
@@ -236,34 +207,18 @@ export default function DashboardPage() {
         <main className="p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-8 animate-in">
             
-            {/* NO COMPANY - AUTO CREATING OR ERROR */}
-            {companies.length === 0 && (
+            {/* LOADING STATE */}
+            {loadingState === 'loading' && (
               <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                {loadingState === 'error' ? (
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
-                      <span className="text-2xl">⚠️</span>
-                    </div>
-                    <p className="text-red-600 font-medium">Erreur de configuration</p>
-                    <p className="text-slate-500 text-sm max-w-md">{errorMessage}</p>
-                    <button 
-                      onClick={() => { setCompanyCreationAttempted(false); fetchCompanies(); }}
-                      className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-                    >
-                      Réessayer
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-                    <p className="text-slate-500">Configuration de votre espace...</p>
-                  </div>
-                )}
+                <div className="flex flex-col items-center gap-4">
+                  <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
+                  <p className="text-slate-500">Chargement...</p>
+                </div>
               </div>
             )}
 
             {/* DASHBOARD VIEW */}
-            {activeTab === 'dashboard' && selectedCompanyId && (
+            {activeTab === 'dashboard' && loadingState === 'ready' && (
               <>
                 {/* Quick Stats - Calculés depuis les vrais documents */}
                 {(() => {
@@ -323,7 +278,7 @@ export default function DashboardPage() {
             )}
 
             {/* UPLOAD VIEW */}
-            {activeTab === 'upload' && selectedCompanyId && (
+            {activeTab === 'upload' && loadingState === 'ready' && (
               <div className="max-w-3xl mx-auto">
                 <UploadDocumentModern
                   companyId={selectedCompanyId}
@@ -360,7 +315,7 @@ export default function DashboardPage() {
             )}
 
             {/* DOCUMENTS VIEW */}
-            {activeTab === 'documents' && selectedCompanyId && (
+            {activeTab === 'documents' && loadingState === 'ready' && (
               <div className="space-y-6">
                 {/* Controls */}
                 <Card padding="md" className="flex flex-col md:flex-row gap-4 justify-between items-center sticky top-20 z-30">
