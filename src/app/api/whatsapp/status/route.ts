@@ -16,12 +16,12 @@ export async function GET() {
   try {
     const session = await auth();
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       select: {
         whatsappConnected: true,
         whatsappPhoneNumber: true,
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await auth();
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     const existing = await prisma.user.findFirst({
       where: {
         whatsappPhoneNumber: phoneNumber,
-        id: { not: session.user.id },
+        email: { not: session.user.email },
       },
     });
 
@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 
     // Enregistrer le numéro
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       data: {
         whatsappConnected: true,
         whatsappPhoneNumber: phoneNumber,
@@ -91,12 +91,12 @@ export async function DELETE() {
   try {
     const session = await auth();
     
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Non authentifié' }, { status: 401 });
     }
 
     await prisma.user.update({
-      where: { id: session.user.id },
+      where: { email: session.user.email },
       data: {
         whatsappConnected: false,
         whatsappPhoneNumber: null,
