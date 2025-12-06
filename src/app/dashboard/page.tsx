@@ -50,6 +50,8 @@ export default function DashboardPage() {
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [generatingTestData, setGeneratingTestData] = useState(false);
   const [companyCreationAttempted, setCompanyCreationAttempted] = useState(false);
+  const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [errorMessage, setErrorMessage] = useState('');
 
   // Auth Check
   useEffect(() => {
@@ -70,32 +72,49 @@ export default function DashboardPage() {
 
   const fetchCompanies = async () => {
     try {
+      setLoadingState('loading');
       const response = await fetch('/api/companies');
-      if (response.ok) {
-        let data = await response.json();
-        
-        // Si aucune entreprise, en créer une automatiquement (une seule fois)
-        if (data.length === 0 && session?.user?.email && !companyCreationAttempted) {
-          setCompanyCreationAttempted(true);
-          const userName = session.user.name || session.user.email.split('@')[0];
-          const createResponse = await fetch('/api/companies', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: `Entreprise de ${userName}`,
-            }),
-          });
-          if (createResponse.ok) {
-            const newCompany = await createResponse.json();
-            data = [newCompany];
-          }
-        }
-        
-        setCompanies(data);
-        if (data.length > 0 && !selectedCompanyId) setSelectedCompanyId(data[0].id);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', response.status, errorData);
+        setErrorMessage(`Erreur ${response.status}: ${errorData.error || 'Connexion échouée'}`);
+        setLoadingState('error');
+        return;
       }
+      
+      let data = await response.json();
+      
+      // Si aucune entreprise, en créer une automatiquement (une seule fois)
+      if (data.length === 0 && session?.user?.email && !companyCreationAttempted) {
+        setCompanyCreationAttempted(true);
+        const userName = session.user.name || session.user.email.split('@')[0];
+        const createResponse = await fetch('/api/companies', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: `Entreprise de ${userName}`,
+          }),
+        });
+        if (createResponse.ok) {
+          const newCompany = await createResponse.json();
+          data = [newCompany];
+        } else {
+          const errorData = await createResponse.json().catch(() => ({}));
+          console.error('Create company error:', createResponse.status, errorData);
+          setErrorMessage(`Impossible de créer l'entreprise: ${errorData.error || 'Erreur serveur'}`);
+          setLoadingState('error');
+          return;
+        }
+      }
+      
+      setCompanies(data);
+      if (data.length > 0 && !selectedCompanyId) setSelectedCompanyId(data[0].id);
+      setLoadingState('ready');
     } catch (error) {
       console.error('Error fetching companies:', error);
+      setErrorMessage('Erreur de connexion au serveur');
+      setLoadingState('error');
     }
   };
 
@@ -217,13 +236,29 @@ export default function DashboardPage() {
         <main className="p-6 lg:p-8">
           <div className="max-w-7xl mx-auto space-y-8 animate-in">
             
-            {/* NO COMPANY - AUTO CREATING */}
+            {/* NO COMPANY - AUTO CREATING OR ERROR */}
             {companies.length === 0 && (
               <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-                  <p className="text-slate-500">Configuration de votre espace...</p>
-                </div>
+                {loadingState === 'error' ? (
+                  <div className="flex flex-col items-center gap-4 text-center">
+                    <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                      <span className="text-2xl">⚠️</span>
+                    </div>
+                    <p className="text-red-600 font-medium">Erreur de configuration</p>
+                    <p className="text-slate-500 text-sm max-w-md">{errorMessage}</p>
+                    <button 
+                      onClick={() => { setCompanyCreationAttempted(false); fetchCompanies(); }}
+                      className="mt-4 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+                    >
+                      Réessayer
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
+                    <p className="text-slate-500">Configuration de votre espace...</p>
+                  </div>
+                )}
               </div>
             )}
 
