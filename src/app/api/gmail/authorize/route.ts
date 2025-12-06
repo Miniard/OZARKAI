@@ -9,6 +9,8 @@
  * 5. On stocke les tokens pour accéder à Gmail
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 

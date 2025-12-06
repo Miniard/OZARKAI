@@ -3,6 +3,8 @@
  * Échange le code contre des tokens et les stocke
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 

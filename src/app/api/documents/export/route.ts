@@ -3,6 +3,8 @@
  * GET /api/documents/export - Exporter les documents en CSV ou JSON
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';

@@ -8,6 +8,11 @@
  * - Fournisseur/Client
  * - Date de facture
  * - Numéro de facture
+ */
+
+export const dynamic = 'force-dynamic';
+
+/**
  * - Type de document
  */
 

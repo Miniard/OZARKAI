@@ -3,6 +3,8 @@
  * POST /api/upload - Génère une URL présignée pour upload sécurisé
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { generatePresignedUploadUrl, validateUploadMetadata } from '@/lib/upload/s3';

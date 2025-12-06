@@ -11,6 +11,8 @@
  * 4. Copier le verify token et l'ajouter en variable d'env
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
 

@@ -3,6 +3,8 @@
  * Gère le scan et l'import des factures depuis Gmail
  */
 
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
