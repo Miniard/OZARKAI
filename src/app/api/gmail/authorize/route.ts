@@ -44,7 +44,7 @@ export async function GET() {
     scope: GMAIL_SCOPES,
     access_type: 'offline',
     prompt: 'consent',
-    state: session.user.id, // Pour retrouver l'utilisateur au callback
+    state: session.user.email, // Utiliser l'email car plus fiable que l'ID
     login_hint: session.user.email, // Pré-remplir l'email
   });
 

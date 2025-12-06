@@ -49,17 +49,21 @@ export async function GET(request: NextRequest) {
 
     const tokens = await tokenResponse.json();
 
-    // Stocker les tokens dans la base de données
+    // Stocker les tokens dans la base de données (state = email)
+    const userEmail = decodeURIComponent(state);
+    console.log('Gmail callback - Updating user:', userEmail);
+    
     await prisma.user.update({
-      where: { id: state },
+      where: { email: userEmail },
       data: {
         gmailAccessToken: tokens.access_token,
-        gmailRefreshToken: tokens.refresh_token,
+        gmailRefreshToken: tokens.refresh_token || undefined, // Peut être absent si déjà autorisé
         gmailTokenExpiry: new Date(Date.now() + tokens.expires_in * 1000),
         gmailConnected: true,
       },
     });
 
+    console.log('Gmail tokens saved successfully');
     return NextResponse.redirect(`${baseUrl}/dashboard?gmail=success`);
   } catch (error) {
     console.error('Gmail callback error:', error);

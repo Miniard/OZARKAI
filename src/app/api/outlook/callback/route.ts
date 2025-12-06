@@ -56,9 +56,12 @@ export async function GET(request: NextRequest) {
     const expiresAt = new Date();
     expiresAt.setSeconds(expiresAt.getSeconds() + tokens.expires_in);
 
-    // Stocker les tokens en base
+    // Stocker les tokens en base (state = email)
+    const userEmail = decodeURIComponent(state);
+    console.log('Outlook callback - Updating user:', userEmail);
+    
     await prisma.user.update({
-      where: { id: state },
+      where: { email: userEmail },
       data: {
         outlookConnected: true,
         outlookAccessToken: tokens.access_token,
@@ -67,7 +70,7 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    console.log('✅ Outlook connecté pour user:', state);
+    console.log('✅ Outlook connecté pour user:', userEmail);
 
     // Rediriger vers le dashboard avec succès
     return NextResponse.redirect(

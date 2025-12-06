@@ -44,7 +44,7 @@ export async function GET() {
     response_type: 'code',
     scope: OUTLOOK_SCOPES,
     response_mode: 'query',
-    state: session.user.id, // Pour retrouver l'utilisateur au callback
+    state: session.user.email, // Utiliser l'email car plus fiable que l'ID
     login_hint: session.user.email || '', // Pré-remplir l'email
   });
 
