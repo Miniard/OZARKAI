@@ -37,10 +37,17 @@ export function Dashboard({ companyId }: DashboardProps) {
   const [isAnalyzingAll, setIsAnalyzingAll] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    if (companyId) {
+      fetchData();
+    } else {
+      setLoading(false);
+      setData(null);
+    }
   }, [companyId]);
 
   async function fetchData() {
+    if (!companyId) return;
+    
     try {
       setLoading(true);
       const response = await fetch(`/api/dashboard?companyId=${companyId}`);

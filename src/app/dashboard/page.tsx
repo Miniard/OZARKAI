@@ -27,7 +27,8 @@ import {
   TrendingDown,
   Receipt,
   Bell,
-  HelpCircle
+  HelpCircle,
+  Building2
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -220,8 +221,21 @@ export default function DashboardPage() {
             {/* DASHBOARD VIEW */}
             {activeTab === 'dashboard' && loadingState === 'ready' && (
               <>
+                {/* Message si pas d'entreprise */}
+                {!selectedCompanyId && (
+                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+                    <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Building2 className="w-8 h-8 text-primary-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Bienvenue sur OZARKAI !</h3>
+                    <p className="text-slate-600 mb-6">
+                      Pour commencer, créez votre première entreprise en cliquant sur le sélecteur d&apos;entreprise en haut à gauche.
+                    </p>
+                  </div>
+                )}
+
                 {/* Quick Stats - Calculés depuis les vrais documents */}
-                {(() => {
+                {selectedCompanyId && (() => {
                   // Calcul des vraies stats depuis les documents
                   const now = new Date();
                   const thisMonth = documents.filter(d => {
@@ -239,8 +253,6 @@ export default function DashboardPage() {
                   
                   const tva = thisMonth
                     .reduce((sum, d) => sum + (d.vat || 0), 0);
-                  
-                  const facturesEnAttente = documents.filter(d => !d.analyzed).length;
 
                   return (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -272,8 +284,10 @@ export default function DashboardPage() {
                   );
                 })()}
 
-                {/* Main Charts & KPIs */}
-                <Dashboard key={refreshKey} companyId={selectedCompanyId || ''} />
+                {/* Main Charts & KPIs - seulement si une entreprise est sélectionnée */}
+                {selectedCompanyId && (
+                  <Dashboard key={refreshKey} companyId={selectedCompanyId} />
+                )}
               </>
             )}
 
