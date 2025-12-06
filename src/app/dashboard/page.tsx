@@ -305,26 +305,42 @@ export default function DashboardPage() {
             )}
 
             {/* GMAIL IMPORT VIEW */}
-            {activeTab === 'gmail' && selectedCompanyId && (
+            {activeTab === 'gmail' && (
               <div className="max-w-4xl mx-auto">
-                <GmailImport 
-                  companyId={selectedCompanyId}
-                  onImportComplete={() => {
-                    setRefreshKey(p => p + 1);
-                  }}
-                />
+                {selectedCompanyId ? (
+                  <GmailImport 
+                    companyId={selectedCompanyId}
+                    onImportComplete={() => {
+                      setRefreshKey(p => p + 1);
+                    }}
+                  />
+                ) : (
+                  <Card padding="lg" className="text-center">
+                    <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Créez d&apos;abord une entreprise</h3>
+                    <p className="text-slate-500">Pour importer des factures depuis Gmail, vous devez d&apos;abord créer une entreprise.</p>
+                  </Card>
+                )}
               </div>
             )}
 
             {/* OUTLOOK IMPORT VIEW */}
-            {activeTab === 'outlook' && selectedCompanyId && (
+            {activeTab === 'outlook' && (
               <div className="max-w-4xl mx-auto">
-                <OutlookImport 
-                  companyId={selectedCompanyId}
-                  onImportComplete={() => {
-                    setRefreshKey(p => p + 1);
-                  }}
-                />
+                {selectedCompanyId ? (
+                  <OutlookImport 
+                    companyId={selectedCompanyId}
+                    onImportComplete={() => {
+                      setRefreshKey(p => p + 1);
+                    }}
+                  />
+                ) : (
+                  <Card padding="lg" className="text-center">
+                    <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Créez d&apos;abord une entreprise</h3>
+                    <p className="text-slate-500">Pour importer des factures depuis Outlook, vous devez d&apos;abord créer une entreprise.</p>
+                  </Card>
+                )}
               </div>
             )}
 
