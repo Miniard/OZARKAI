@@ -134,7 +134,7 @@ export function getAccountingRules(
           '💡 Conservez toutes vos factures (obligation 10 ans)',
           '💡 Utilisez un compte bancaire professionnel',
           '💡 Faites appel à un expert-comptable pour la certification des comptes',
-          canRecoverVAT
+          !isVATExempt
             ? '💡 Pensez à récupérer la TVA sur tous vos achats pros'
             : '💡 Optez pour le régime réel si vous avez beaucoup d\'achats',
         ],
