@@ -111,19 +111,41 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       try {
         if (account?.provider !== 'credentials') {
           // OAuth : créer l'utilisateur s'il n'existe pas
-          const existingUser = await prisma.user.findUnique({
+          let existingUser = await prisma.user.findUnique({
             where: { email: user.email! },
+            include: { companies: true },
           });
 
           if (!existingUser) {
-            await prisma.user.create({
+            // Créer l'utilisateur ET son entreprise par défaut
+            existingUser = await prisma.user.create({
               data: {
                 email: user.email!,
                 name: user.name,
                 role: 'USER',
                 passwordHash: '',
+                companies: {
+                  create: {
+                    name: user.name ? `Entreprise de ${user.name}` : 'Mon entreprise',
+                    companyType: 'MICRO_ENTREPRISE',
+                    vatRegime: 'FRANCHISE_BASE',
+                  },
+                },
+              },
+              include: { companies: true },
+            });
+            console.log('Nouvel utilisateur créé avec entreprise:', existingUser.email);
+          } else if (existingUser.companies.length === 0) {
+            // Utilisateur existe mais pas d'entreprise -> en créer une
+            await prisma.company.create({
+              data: {
+                name: existingUser.name ? `Entreprise de ${existingUser.name}` : 'Mon entreprise',
+                companyType: 'MICRO_ENTREPRISE',
+                vatRegime: 'FRANCHISE_BASE',
+                userId: existingUser.id,
               },
             });
+            console.log('Entreprise créée pour utilisateur existant:', existingUser.email);
           }
         }
         return true;

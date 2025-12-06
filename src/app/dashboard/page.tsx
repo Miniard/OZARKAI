@@ -75,17 +75,34 @@ export default function DashboardPage() {
       const response = await fetch('/api/companies');
       
       if (response.ok) {
-        const data = await response.json();
+        let data = await response.json();
+        
+        // Si pas d'entreprise, en créer une automatiquement
+        if (data.length === 0 && session?.user?.name) {
+          const createResponse = await fetch('/api/companies', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: `Entreprise de ${session.user.name}`,
+              companyType: 'MICRO_ENTREPRISE',
+              vatRegime: 'FRANCHISE_BASE',
+            }),
+          });
+          
+          if (createResponse.ok) {
+            const newCompany = await createResponse.json();
+            data = [newCompany];
+          }
+        }
+        
         setCompanies(data);
         if (data.length > 0 && !selectedCompanyId) {
           setSelectedCompanyId(data[0].id);
         }
       }
-      // Même si pas d'entreprise, on affiche le dashboard
       setLoadingState('ready');
     } catch (error) {
       console.error('Error fetching companies:', error);
-      // On continue quand même - le dashboard fonctionnera sans entreprise
       setLoadingState('ready');
     }
   };
