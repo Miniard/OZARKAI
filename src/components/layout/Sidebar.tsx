@@ -22,7 +22,8 @@ import {
   HelpCircle,
   Shield,
   ChevronUp,
-  Users
+  Users,
+  MessageCircle
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
@@ -65,6 +66,7 @@ export function Sidebar({
     { id: 'upload', label: 'Importer', icon: UploadCloud },
     { id: 'connectors', label: 'Connecteurs', icon: Link2 },
     { id: 'extraction', label: 'Extraction', icon: Download },
+    { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle, isNew: true },
     { id: 'documents', label: 'Mes Factures', icon: FileText },
     { id: 'teams', label: 'Équipes', icon: Users },
   ];
