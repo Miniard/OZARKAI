@@ -10,13 +10,13 @@ import { useRouter } from 'next/navigation';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Dashboard } from '@/components/Dashboard';
 import { UploadDocumentModern } from '@/components/UploadDocumentModern';
-import { GmailImport } from '@/components/gmail/GmailImport';
 import { DocumentDetail } from '@/components/DocumentDetail';
 import { DocumentCard } from '@/components/documents/DocumentCard';
 import { DocumentFilters } from '@/components/documents/DocumentFilters';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { TeamsPage } from '@/components/teams/TeamsPage';
-import { OutlookImport } from '@/components/outlook/OutlookImport';
+import { ConnectorHub } from '@/components/connectors/ConnectorHub';
+import { ExtractionCenter } from '@/components/connectors/ExtractionCenter';
 import { Button } from '@/components/ui/Button';
 import { Card, StatCard } from '@/components/ui/Card';
 import { 
@@ -28,7 +28,9 @@ import {
   Receipt,
   Bell,
   HelpCircle,
-  Building2
+  Building2,
+  Shield,
+  CreditCard
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -150,11 +152,14 @@ export default function DashboardPage() {
   const pageTitles: Record<string, { title: string; subtitle: string }> = {
     dashboard: { title: 'Tableau de Bord', subtitle: 'Vue d\'ensemble de votre activité' },
     upload: { title: 'Importer des Documents', subtitle: 'Glissez-déposez vos factures' },
-    gmail: { title: 'Import Gmail', subtitle: 'Récupérez automatiquement vos factures' },
-    outlook: { title: 'Import Outlook', subtitle: 'Importez depuis Office 365' },
+    connectors: { title: 'Connecteurs', subtitle: 'Connectez vos boîtes mail' },
+    extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures depuis vos emails' },
     documents: { title: 'Mes Factures', subtitle: 'Gérez tous vos documents' },
     teams: { title: 'Équipes', subtitle: 'Collaborez avec vos collègues' },
     settings: { title: 'Paramètres', subtitle: 'Gérez votre compte et vos préférences' },
+    security: { title: 'Sécurité', subtitle: 'Gérez la sécurité de votre compte' },
+    billing: { title: 'Facturation', subtitle: 'Gérez votre abonnement' },
+    help: { title: 'Aide & Support', subtitle: 'Obtenez de l\'aide' },
   };
 
   const currentPage = pageTitles[activeTab] || { title: '', subtitle: '' };
@@ -321,41 +326,31 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* GMAIL IMPORT VIEW */}
-            {activeTab === 'gmail' && (
+            {/* CONNECTORS VIEW */}
+            {activeTab === 'connectors' && (
               <div className="max-w-4xl mx-auto">
-                {selectedCompanyId ? (
-                  <GmailImport 
-                    companyId={selectedCompanyId}
-                    onImportComplete={() => {
-                      setRefreshKey(p => p + 1);
-                    }}
-                  />
-                ) : (
-                  <Card padding="lg" className="text-center">
-                    <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Créez d&apos;abord une entreprise</h3>
-                    <p className="text-slate-500">Pour importer des factures depuis Gmail, vous devez d&apos;abord créer une entreprise.</p>
-                  </Card>
-                )}
+                <ConnectorHub 
+                  onNavigateToExtraction={() => setActiveTab('extraction')}
+                />
               </div>
             )}
 
-            {/* OUTLOOK IMPORT VIEW */}
-            {activeTab === 'outlook' && (
-              <div className="max-w-4xl mx-auto">
+            {/* EXTRACTION VIEW */}
+            {activeTab === 'extraction' && (
+              <div className="max-w-5xl mx-auto">
                 {selectedCompanyId ? (
-                  <OutlookImport 
+                  <ExtractionCenter 
                     companyId={selectedCompanyId}
                     onImportComplete={() => {
                       setRefreshKey(p => p + 1);
                     }}
+                    onNavigateToConnector={() => setActiveTab('connectors')}
                   />
                 ) : (
                   <Card padding="lg" className="text-center">
                     <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-slate-900 mb-2">Créez d&apos;abord une entreprise</h3>
-                    <p className="text-slate-500">Pour importer des factures depuis Outlook, vous devez d&apos;abord créer une entreprise.</p>
+                    <p className="text-slate-500">Pour extraire des factures, vous devez d&apos;abord créer une entreprise.</p>
                   </Card>
                 )}
               </div>
@@ -460,6 +455,124 @@ export default function DashboardPage() {
             {/* SETTINGS VIEW */}
             {activeTab === 'settings' && (
               <SettingsPage />
+            )}
+
+            {/* SECURITY VIEW */}
+            {activeTab === 'security' && (
+              <div className="max-w-3xl mx-auto">
+                <Card padding="lg">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                      <Shield className="w-6 h-6 text-primary-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-slate-900">Sécurité du compte</h3>
+                      <p className="text-slate-500">Gérez les paramètres de sécurité</p>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 bg-slate-50 rounded-xl">
+                      <h4 className="font-medium text-slate-900 mb-1">Authentification à deux facteurs</h4>
+                      <p className="text-sm text-slate-600 mb-3">Ajoutez une couche de sécurité supplémentaire</p>
+                      <Button variant="outline" size="sm">Configurer</Button>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-xl">
+                      <h4 className="font-medium text-slate-900 mb-1">Sessions actives</h4>
+                      <p className="text-sm text-slate-600 mb-3">Gérez les appareils connectés à votre compte</p>
+                      <Button variant="outline" size="sm">Voir les sessions</Button>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-xl">
+                      <h4 className="font-medium text-slate-900 mb-1">Changer le mot de passe</h4>
+                      <p className="text-sm text-slate-600 mb-3">Mettez à jour votre mot de passe régulièrement</p>
+                      <Button variant="outline" size="sm">Modifier</Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* BILLING VIEW */}
+            {activeTab === 'billing' && (
+              <div className="max-w-3xl mx-auto">
+                <Card padding="lg">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                      <CreditCard className="w-6 h-6 text-primary-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-slate-900">Facturation</h3>
+                      <p className="text-slate-500">Gérez votre abonnement et vos paiements</p>
+                    </div>
+                  </div>
+
+                  {/* Plan actuel */}
+                  <div className="p-6 bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl mb-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm text-primary-600 font-medium">Plan actuel</p>
+                        <h4 className="text-2xl font-bold text-primary-900">Gratuit</h4>
+                        <p className="text-sm text-primary-700">Jusqu&apos;à 50 documents/mois</p>
+                      </div>
+                      <Button>Passer à Pro</Button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 bg-slate-50 rounded-xl">
+                      <h4 className="font-medium text-slate-900 mb-1">Historique des paiements</h4>
+                      <p className="text-sm text-slate-500">Aucun paiement effectué</p>
+                    </div>
+
+                    <div className="p-4 bg-slate-50 rounded-xl">
+                      <h4 className="font-medium text-slate-900 mb-1">Moyen de paiement</h4>
+                      <p className="text-sm text-slate-600 mb-3">Aucune carte enregistrée</p>
+                      <Button variant="outline" size="sm">Ajouter une carte</Button>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
+            {/* HELP VIEW */}
+            {activeTab === 'help' && (
+              <div className="max-w-3xl mx-auto">
+                <Card padding="lg">
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                      <HelpCircle className="w-6 h-6 text-primary-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-slate-900">Aide & Support</h3>
+                      <p className="text-slate-500">Comment pouvons-nous vous aider ?</p>
+                    </div>
+                  </div>
+
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                      <h4 className="font-medium text-slate-900 mb-1">📚 Documentation</h4>
+                      <p className="text-sm text-slate-600">Consultez nos guides détaillés</p>
+                    </a>
+
+                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                      <h4 className="font-medium text-slate-900 mb-1">💬 Chat en direct</h4>
+                      <p className="text-sm text-slate-600">Discutez avec notre équipe</p>
+                    </a>
+
+                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                      <h4 className="font-medium text-slate-900 mb-1">📧 Email</h4>
+                      <p className="text-sm text-slate-600">support@komptal.com</p>
+                    </a>
+
+                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                      <h4 className="font-medium text-slate-900 mb-1">🐛 Signaler un bug</h4>
+                      <p className="text-sm text-slate-600">Aidez-nous à améliorer Komptal</p>
+                    </a>
+                  </div>
+                </Card>
+              </div>
             )}
 
           </div>

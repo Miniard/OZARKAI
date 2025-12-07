@@ -31,11 +31,23 @@ export async function POST(request: NextRequest) {
 
     // Authentification
     const session = await auth();
-    console.log('👤 Session:', session?.user?.id);
-    if (!session?.user?.id) {
+    console.log('👤 Session:', session?.user?.email);
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Non authentifié' },
         { status: 401 }
+      );
+    }
+
+    // Récupérer l'utilisateur par email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Utilisateur introuvable' },
+        { status: 404 }
       );
     }
 
@@ -49,7 +61,7 @@ export async function POST(request: NextRequest) {
       where: {
         id: documentId,
         company: {
-          userId: session.user.id,
+          userId: user.id,
         },
       },
       include: {

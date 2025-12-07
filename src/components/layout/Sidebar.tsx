@@ -1,10 +1,11 @@
 /**
  * Sidebar Navigation - Design lumineux et moderne
+ * Avec menu profil cliquable
  */
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { 
   LayoutDashboard, 
   UploadCloud, 
@@ -13,10 +14,16 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
-  Mail,
-  Settings
+  Link2,
+  Download,
+  Settings,
+  User,
+  CreditCard,
+  HelpCircle,
+  Shield,
+  ChevronUp,
+  Users
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
 import { signOut } from 'next-auth/react';
 
 interface SidebarProps {
@@ -39,18 +46,34 @@ export function Sidebar({
   setSelectedCompanyId
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+
+  // Fermer le menu au clic extérieur
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const mainMenuItems = [
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
     { id: 'upload', label: 'Importer', icon: UploadCloud },
-    { id: 'gmail', label: 'Import Gmail', icon: Mail },
-    { id: 'outlook', label: 'Import Outlook', icon: Mail },
+    { id: 'connectors', label: 'Connecteurs', icon: Link2 },
+    { id: 'extraction', label: 'Extraction', icon: Download },
     { id: 'documents', label: 'Mes Factures', icon: FileText },
-    { id: 'teams', label: 'Équipes', icon: Building2 },
+    { id: 'teams', label: 'Équipes', icon: Users },
   ];
 
-  const settingsMenuItems = [
-    { id: 'settings', label: 'Paramètres', icon: Settings },
+  const profileMenuItems = [
+    { id: 'settings', label: 'Paramètres du compte', icon: Settings },
+    { id: 'security', label: 'Sécurité', icon: Shield },
+    { id: 'billing', label: 'Facturation', icon: CreditCard },
+    { id: 'help', label: 'Aide & Support', icon: HelpCircle },
   ];
 
   return (
@@ -120,29 +143,55 @@ export function Sidebar({
             />
           ))}
         </div>
-
-        {/* Divider */}
-        <div className="my-4 mx-2 h-px bg-slate-100" />
-
-        {/* Settings Section */}
-        <div className="space-y-1">
-          {settingsMenuItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              isActive={activeTab === item.id}
-              collapsed={collapsed}
-              onClick={() => setActiveTab(item.id)}
-            />
-          ))}
-        </div>
       </nav>
 
-      {/* Footer User Profile */}
-      <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-        <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
+      {/* Footer User Profile - Cliquable */}
+      <div className="relative p-4 border-t border-slate-100 bg-slate-50/50" ref={profileMenuRef}>
+        {/* Menu Dropdown */}
+        {showProfileMenu && !collapsed && (
+          <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-2">
+            <div className="p-3 border-b border-slate-100 bg-slate-50">
+              <p className="text-sm font-semibold text-slate-900">{userName || 'Utilisateur'}</p>
+              <p className="text-xs text-slate-500 truncate">{userEmail}</p>
+            </div>
+            
+            <div className="py-2">
+              {profileMenuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setShowProfileMenu(false);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                >
+                  <item.icon className="w-4 h-4" />
+                  {item.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="border-t border-slate-100">
+              <button
+                onClick={() => signOut()}
+                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Déconnexion
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Profile Button */}
+        <button
+          onClick={() => !collapsed && setShowProfileMenu(!showProfileMenu)}
+          className={`w-full flex items-center gap-3 ${collapsed ? 'justify-center' : ''} 
+                     rounded-xl p-2 hover:bg-slate-100 transition-all cursor-pointer group`}
+        >
           {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 
+                         group-hover:ring-2 group-hover:ring-primary-200 transition-all">
             <span className="text-sm font-semibold text-primary-600">
               {(userName?.[0] || userEmail?.[0] || 'U').toUpperCase()}
             </span>
@@ -150,7 +199,7 @@ export function Sidebar({
           
           {!collapsed && (
             <>
-              <div className="flex-1 min-w-0">
+              <div className="flex-1 min-w-0 text-left">
                 <p className="text-sm font-medium text-slate-900 truncate">
                   {userName || 'Utilisateur'}
                 </p>
@@ -159,16 +208,10 @@ export function Sidebar({
                 </p>
               </div>
               
-              <button 
-                onClick={() => signOut()}
-                className="p-2 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
-                title="Déconnexion"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
+              <ChevronUp className={`w-4 h-4 text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
             </>
           )}
-        </div>
+        </button>
       </div>
 
       {/* Collapse Toggle */}

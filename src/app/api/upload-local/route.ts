@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     // Authentification
     const session = await auth();
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json(
         { error: 'Non authentifié' },
         { status: 401 }
@@ -41,11 +41,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'ID entreprise manquant' },
+        { status: 400 }
+      );
+    }
+
+    // Récupérer l'utilisateur par email
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+    });
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Utilisateur introuvable' },
+        { status: 404 }
+      );
+    }
+
     // Vérifier que l'entreprise appartient à l'utilisateur
     const company = await prisma.company.findFirst({
       where: {
         id: companyId,
-        userId: session.user.id,
+        userId: user.id,
       },
     });
 

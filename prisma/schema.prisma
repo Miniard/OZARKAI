@@ -123,6 +123,7 @@ model Document {
   fileUrl      String       // URL S3
   fileType     String       // pdf, image, etc.
   fileSize     Int
+  source       DocumentSource @default(MANUAL)  // Source de l'import
   
   companyId    String
   company      Company      @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -145,6 +146,13 @@ model Document {
   
   @@index([companyId])
   @@index([analyzed])
+}
+
+enum DocumentSource {
+  MANUAL
+  GMAIL
+  OUTLOOK
+  WHATSAPP
 }
 
 enum DocumentType {
