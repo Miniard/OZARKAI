@@ -16,7 +16,6 @@ import { DocumentFilters } from '@/components/documents/DocumentFilters';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { TeamsPage } from '@/components/teams/TeamsPage';
 import { ConnectorHub } from '@/components/connectors/ConnectorHub';
-import { ExtractionCenter } from '@/components/connectors/ExtractionCenter';
 import { WhatsAppSetup } from '@/components/whatsapp/WhatsAppSetup';
 import { Button } from '@/components/ui/Button';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -154,8 +153,7 @@ export default function DashboardPage() {
   const pageTitles: Record<string, { title: string; subtitle: string }> = {
     dashboard: { title: 'Tableau de Bord', subtitle: 'Vue d\'ensemble de votre activité' },
     upload: { title: 'Importer des Documents', subtitle: 'Glissez-déposez vos factures' },
-    connectors: { title: 'Connecteurs', subtitle: 'Connectez vos boîtes mail' },
-    extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures depuis vos emails' },
+    connectors: { title: 'Email Import', subtitle: 'Connectez vos boîtes mail pour importer automatiquement' },
     whatsapp: { title: 'WhatsApp Business', subtitle: 'Envoyez vos factures par WhatsApp' },
     documents: { title: 'Mes Factures', subtitle: 'Gérez tous vos documents' },
     teams: { title: 'Équipes', subtitle: 'Collaborez avec vos collègues' },
@@ -331,32 +329,13 @@ export default function DashboardPage() {
 
             {/* CONNECTORS VIEW */}
             {activeTab === 'connectors' && (
-              <div className="max-w-4xl mx-auto">
-                <ConnectorHub 
-                  onNavigateToExtraction={() => setActiveTab('extraction')}
-                />
-              </div>
-            )}
-
-            {/* EXTRACTION VIEW */}
-            {activeTab === 'extraction' && (
-              <div className="max-w-5xl mx-auto">
-                {selectedCompanyId ? (
-                  <ExtractionCenter 
-                    companyId={selectedCompanyId}
-                    onImportComplete={() => {
-                      setRefreshKey(p => p + 1);
-                    }}
-                    onNavigateToConnector={() => setActiveTab('connectors')}
-                  />
-                ) : (
-                  <Card padding="lg" className="text-center">
-                    <Building2 className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Créez d&apos;abord une entreprise</h3>
-                    <p className="text-slate-500">Pour extraire des factures, vous devez d&apos;abord créer une entreprise.</p>
-                  </Card>
-                )}
-              </div>
+              <ConnectorHub 
+                companyId={selectedCompanyId || ''}
+                onDocumentsImported={() => {
+                  setRefreshKey(p => p + 1);
+                  fetchDocuments();
+                }}
+              />
             )}
 
             {/* WHATSAPP VIEW */}
