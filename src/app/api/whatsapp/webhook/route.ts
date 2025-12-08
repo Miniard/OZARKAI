@@ -195,7 +195,7 @@ async function handleMedia(
         fileSize: buffer.byteLength,
         companyId: company.id,
         analyzed: false,
-        source: 'whatsapp',
+        source: 'WHATSAPP',
       },
     });
 
