@@ -1,5 +1,5 @@
 /**
- * Composant de configuration WhatsApp Business
+ * Composant de configuration WhatsApp via Twilio
  * Permet aux utilisateurs de lier leur numéro pour recevoir/envoyer des factures
  */
 
@@ -17,12 +17,18 @@ import {
   Camera,
   Loader2,
   AlertCircle,
-  Smartphone
+  Smartphone,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 
 interface WhatsAppSetupProps {
   onSetupComplete?: () => void;
 }
+
+// Numéro Twilio Sandbox (à remplacer par le vrai numéro en prod)
+const TWILIO_SANDBOX_NUMBER = '+1 415 523 8886';
+const TWILIO_JOIN_CODE = 'join <ton-code>'; // L'utilisateur doit mettre son code
 
 export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
   const [isConnected, setIsConnected] = useState(false);
@@ -32,6 +38,8 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [step, setStep] = useState(1);
 
   useEffect(() => {
     checkStatus();
@@ -43,6 +51,9 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
       const data = await response.json();
       setIsConnected(data.connected);
       setPhoneNumber(data.phoneNumber || '');
+      if (data.connected) {
+        setStep(3);
+      }
     } catch (e) {
       console.error('Erreur check status:', e);
     } finally {
@@ -80,6 +91,7 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
       setIsConnected(true);
       setPhoneNumber(formattedNumber);
       setSuccess(true);
+      setStep(3);
       
       if (onSetupComplete) {
         onSetupComplete();
@@ -103,11 +115,18 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
       setPhoneNumber('');
       setInputPhone('');
       setSuccess(false);
+      setStep(1);
     } catch (e) {
       setError('Erreur lors de la déconnexion');
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const copyNumber = async () => {
+    await navigator.clipboard.writeText(TWILIO_SANDBOX_NUMBER.replace(/\s/g, ''));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (isLoading) {
@@ -119,7 +138,7 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
   }
 
   // Connecté
-  if (isConnected) {
+  if (isConnected && step === 3) {
     return (
       <Card className="border-green-200 bg-gradient-to-br from-green-50 to-emerald-50">
         <CardContent className="py-8">
@@ -138,20 +157,41 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
 
           <div className="bg-white/80 rounded-xl p-4 mb-6">
             <h4 className="font-medium text-slate-900 mb-3">📱 Comment envoyer vos factures :</h4>
-            <ol className="space-y-2 text-sm text-slate-600">
-              <li className="flex items-start gap-2">
-                <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700">1</span>
-                <span>Ajoutez le numéro Komptal à vos contacts</span>
+            <ol className="space-y-3 text-sm text-slate-600">
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700 shrink-0">1</span>
+                <div>
+                  <span className="font-medium">Ouvrez WhatsApp et envoyez au :</span>
+                  <div className="flex items-center gap-2 mt-1">
+                    <code className="bg-slate-100 px-2 py-1 rounded text-green-700 font-mono">
+                      {TWILIO_SANDBOX_NUMBER}
+                    </code>
+                    <button 
+                      onClick={copyNumber}
+                      className="text-slate-400 hover:text-slate-600"
+                    >
+                      {copied ? <CheckCircle className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
               </li>
-              <li className="flex items-start gap-2">
-                <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700">2</span>
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700 shrink-0">2</span>
                 <span>Envoyez une photo ou PDF de votre facture</span>
               </li>
-              <li className="flex items-start gap-2">
-                <span className="w-5 h-5 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700">3</span>
-                <span>L'IA analyse et importe automatiquement !</span>
+              <li className="flex items-start gap-3">
+                <span className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700 shrink-0">3</span>
+                <span>L'IA analyse et importe automatiquement ! 🤖</span>
               </li>
             </ol>
+          </div>
+
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+            <p className="text-sm text-amber-800">
+              <strong>⚠️ Important (Mode Sandbox) :</strong> Vous devez d'abord envoyer le message 
+              <code className="bg-amber-100 px-1 mx-1 rounded">join &lt;code&gt;</code> 
+              au numéro pour activer la connexion. Regardez dans votre console Twilio.
+            </p>
           </div>
 
           <div className="flex items-center justify-between">
@@ -174,7 +214,7 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
     );
   }
 
-  // Non connecté
+  // Non connecté - Étapes de configuration
   return (
     <Card>
       <CardHeader>
@@ -215,67 +255,118 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
           </div>
         </div>
 
-        {/* Formulaire */}
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              <Phone className="w-4 h-4 inline mr-2" />
-              Votre numéro de téléphone
-            </label>
-            <input
-              type="tel"
-              value={inputPhone}
-              onChange={(e) => setInputPhone(e.target.value)}
-              placeholder="06 12 34 56 78"
-              className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
-            />
-            <p className="text-xs text-slate-500 mt-1">
-              Le numéro depuis lequel vous enverrez vos factures
-            </p>
+        {/* Steps indicator */}
+        <div className="flex items-center justify-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 1 ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+            1
           </div>
-
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
-              <AlertCircle className="w-4 h-4" />
-              {error}
-            </div>
-          )}
-
-          {success && (
-            <div className="flex items-center gap-2 p-3 bg-success-50 border border-success-200 rounded-lg text-success-700 text-sm">
-              <CheckCircle className="w-4 h-4" />
-              Numéro enregistré avec succès !
-            </div>
-          )}
-
-          <Button 
-            onClick={handleSaveNumber}
-            disabled={isSaving || !inputPhone}
-            className="w-full bg-green-600 hover:bg-green-700"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Enregistrement...
-              </>
-            ) : (
-              <>
-                <MessageCircle className="w-4 h-4 mr-2" />
-                Activer WhatsApp
-              </>
-            )}
-          </Button>
+          <div className={`w-16 h-1 ${step >= 2 ? 'bg-green-500' : 'bg-slate-200'}`} />
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 2 ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+            2
+          </div>
+          <div className={`w-16 h-1 ${step >= 3 ? 'bg-green-500' : 'bg-slate-200'}`} />
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${step >= 3 ? 'bg-green-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
+            3
+          </div>
         </div>
 
-        {/* Note */}
-        <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl">
-          <p className="text-sm text-amber-800">
-            <strong>📝 Note :</strong> Après activation, vous pourrez envoyer vos factures au numéro Komptal. 
-            Assurez-vous d'envoyer depuis le numéro enregistré ci-dessus.
+        {step === 1 && (
+          <div className="space-y-4">
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+              <h4 className="font-medium text-green-900 mb-2">
+                Étape 1 : Activez le Sandbox Twilio
+              </h4>
+              <p className="text-sm text-green-800 mb-3">
+                Envoyez un message WhatsApp au numéro Twilio pour activer la connexion :
+              </p>
+              <div className="flex items-center gap-3 bg-white rounded-lg p-3">
+                <code className="font-mono text-lg text-green-700 flex-1">
+                  {TWILIO_SANDBOX_NUMBER}
+                </code>
+                <button 
+                  onClick={copyNumber}
+                  className="p-2 hover:bg-slate-100 rounded-lg"
+                >
+                  {copied ? <CheckCircle className="w-5 h-5 text-green-500" /> : <Copy className="w-5 h-5 text-slate-400" />}
+                </button>
+              </div>
+              <p className="text-xs text-green-700 mt-2">
+                📱 Envoyez le message : <code className="bg-green-100 px-1 rounded">join &lt;votre-code&gt;</code>
+              </p>
+            </div>
+
+            <Button 
+              onClick={() => setStep(2)}
+              className="w-full bg-green-600 hover:bg-green-700"
+            >
+              J'ai envoyé le message
+              <CheckCircle className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <Phone className="w-4 h-4 inline mr-2" />
+                Étape 2 : Entrez votre numéro de téléphone
+              </label>
+              <input
+                type="tel"
+                value={inputPhone}
+                onChange={(e) => setInputPhone(e.target.value)}
+                placeholder="06 12 34 56 78"
+                className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Le numéro depuis lequel vous avez envoyé le message "join"
+              </p>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 bg-danger-50 border border-danger-200 rounded-lg text-danger-700 text-sm">
+                <AlertCircle className="w-4 h-4" />
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <Button 
+                variant="outline"
+                onClick={() => setStep(1)}
+              >
+                Retour
+              </Button>
+              <Button 
+                onClick={handleSaveNumber}
+                disabled={isSaving || !inputPhone}
+                className="flex-1 bg-green-600 hover:bg-green-700"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Activer WhatsApp
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Note Twilio */}
+        <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+          <p className="text-sm text-slate-600">
+            <strong>ℹ️ Mode Sandbox :</strong> Vous utilisez le sandbox Twilio pour les tests. 
+            En production, un numéro dédié sera disponible.
           </p>
         </div>
       </CardContent>
     </Card>
   );
 }
-
