@@ -123,7 +123,6 @@ AUTRES RÈGLES:
 async function extractPDFText(source: string | Buffer): Promise<string> {
   try {
     // pdf-parse est compatible serverless (pas de worker)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pdfParse = require('pdf-parse') as (buffer: Buffer, options?: any) => Promise<{ text: string; numpages: number }>;
     
     let data: Buffer;
