@@ -238,7 +238,7 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-100 z-50 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 bg-slate-100 z-[100] overflow-hidden flex flex-col">
       {/* HEADER */}
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-4">

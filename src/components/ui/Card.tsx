@@ -187,7 +187,6 @@ function StatCard({ title, value, change, icon, iconColor = 'text-primary-500', 
         {icon && (
           <div className={cn(
             'w-12 h-12 rounded-xl flex items-center justify-center',
-            'bg-slate-50',
             iconColor
           )}>
             {icon}

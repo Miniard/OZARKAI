@@ -54,23 +54,23 @@ export interface AnalysisResult {
   error?: string;
 }
 
-const ANALYSIS_PROMPT = `Tu es un expert en analyse de documents comptables français et internationaux.
+const ANALYSIS_PROMPT = `Tu es un expert en analyse de documents comptables.
 Analyse ce document et extrais TOUTES les informations au format JSON strict.
 Réponds UNIQUEMENT avec le JSON, sans markdown ni explication.
 
 {
-  "type": "FACTURE_VENTE" | "FACTURE_ACHAT" | "DEVIS" | "NOTE_FRAIS" | "RECU" | "AUTRE",
+  "type": "FACTURE_ACHAT" | "FACTURE_VENTE" | "DEVIS" | "NOTE_FRAIS" | "RECU" | "AUTRE",
   "numero": "numéro de facture/reçu ou null",
   "date": "YYYY-MM-DD ou null",
   "dueDate": "YYYY-MM-DD (date d'échéance) ou null",
   
-  "fournisseur": "nom de l'entreprise/magasin émettrice",
-  "fournisseurAdresse": "adresse complète ou null",
+  "fournisseur": "nom de l'entreprise qui ÉMET la facture (celle qui vend/facture)",
+  "fournisseurAdresse": "adresse complète du fournisseur ou null",
   "fournisseurEmail": "email du fournisseur ou null",
   "fournisseurTelephone": "téléphone du fournisseur ou null",
   "fournisseurTVA": "numéro TVA intracommunautaire ou SIRET ou null",
   
-  "client": "nom du client/destinataire ou null",
+  "client": "nom du client qui REÇOIT la facture (celui qui doit payer) ou null",
   
   "montantHT": nombre ou null,
   "tva": nombre (montant TVA total) ou null,
@@ -79,7 +79,7 @@ Réponds UNIQUEMENT avec le JSON, sans markdown ni explication.
   "devise": "EUR" | "USD" | "GBP" etc,
   
   "paymentMethod": "CB" | "ESPECES" | "CHEQUE" | "VIREMENT" | "PRELEVEMENT" | null,
-  "category": "RESTAURANT" | "TRANSPORT" | "FOURNITURES" | "SERVICES" | "ABONNEMENT" | "AUTRES" | null,
+  "category": "RESTAURANT" | "TRANSPORT" | "FOURNITURES" | "SERVICES" | "ABONNEMENT" | "LOGICIEL" | "HEBERGEMENT" | "AUTRES" | null,
   
   "description": "description courte du contenu",
   "notes": "informations supplémentaires remarquées ou null",
@@ -96,16 +96,25 @@ Réponds UNIQUEMENT avec le JSON, sans markdown ni explication.
   ]
 }
 
-RÈGLES IMPORTANTES:
-1. Extrais TOUTES les lignes de produits/services visibles - C'EST OBLIGATOIRE
+RÈGLES CRITIQUES POUR LE TYPE:
+- FACTURE_ACHAT = facture que l'utilisateur REÇOIT et doit PAYER (c'est une DÉPENSE)
+  → Le fournisseur est une entreprise tierce (ex: Replicate, Amazon, restaurant...)
+  → L'utilisateur est le CLIENT qui doit payer
+  
+- FACTURE_VENTE = facture que l'utilisateur ÉMET pour se faire PAYER (c'est un REVENU)
+  → L'utilisateur est le FOURNISSEUR qui facture
+  → Un client lui doit de l'argent
+
+- 99% des factures reçues sont des FACTURE_ACHAT (dépenses)
+- Si tu vois "Montant dû", "À payer", "Invoice" → c'est FACTURE_ACHAT
+- Si tu vois un nom d'entreprise connue (Replicate, AWS, Google, etc.) comme émetteur → FACTURE_ACHAT
+
+AUTRES RÈGLES:
+1. Extrais TOUTES les lignes de produits/services - OBLIGATOIRE
 2. Chaque article = une ligne séparée dans lineItems
-3. Si c'est un ticket de caisse, chaque produit acheté = une ligne séparée
-4. Si le document montre une facture REÇUE (à payer) → FACTURE_ACHAT
-5. Si le document montre une facture ÉMISE (à encaisser) → FACTURE_VENTE
-6. Les montants DOIVENT être des nombres (pas de symboles €/$)
-7. Devine la catégorie selon le type de fournisseur
-8. Pour les tickets de caisse/reçus, utilise le type RECU
-9. NE LAISSE JAMAIS lineItems VIDE - il y a toujours au moins 1 article`;
+3. Les montants DOIVENT être des nombres (pas de symboles €/$)
+4. NE LAISSE JAMAIS lineItems VIDE
+5. Catégorie LOGICIEL/SERVICES pour les outils SaaS (Replicate, AWS, etc.)`;
 
 /**
  * Extrait le texte d'un PDF avec pdfjs-dist

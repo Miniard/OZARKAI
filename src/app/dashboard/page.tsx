@@ -167,6 +167,25 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      {/* Document ouvert en plein écran - AU DESSUS DE TOUT */}
+      {selectedDocument && (
+        <DocumentDetail 
+          document={selectedDocument} 
+          onClose={() => setSelectedDocument(null)}
+          onAnalyzed={() => {
+            setRefreshKey(p => p + 1);
+            fetchDocuments();
+          }}
+          onDelete={async () => {
+            if (confirm('Supprimer ce document ?')) {
+              await fetch(`/api/documents/${selectedDocument.id}`, { method: 'DELETE' });
+              setSelectedDocument(null);
+              fetchDocuments();
+            }
+          }}
+        />
+      )}
+
       {/* Sidebar Navigation */}
       <Sidebar 
         activeTab={activeTab} 
@@ -376,26 +395,6 @@ export default function DashboardPage() {
                     </Button>
                   </div>
                 </Card>
-
-                {/* Documents Grid */}
-                {/* Document ouvert en plein écran */}
-                {selectedDocument && (
-                  <DocumentDetail 
-                    document={selectedDocument} 
-                    onClose={() => setSelectedDocument(null)}
-                    onAnalyzed={() => {
-                      setRefreshKey(p => p + 1);
-                      fetchDocuments();
-                    }}
-                    onDelete={async () => {
-                      if (confirm('Supprimer ce document ?')) {
-                        await fetch(`/api/documents/${selectedDocument.id}`, { method: 'DELETE' });
-                        setSelectedDocument(null);
-                        fetchDocuments();
-                      }
-                    }}
-                  />
-                )}
 
                 {/* Liste des documents */}
                 {documents.length === 0 ? (

@@ -195,13 +195,12 @@ export function Dashboard({ companyId }: DashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* Revenus */}
         <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-success-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
           <CardContent className="py-6 relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-success-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-success-500/20">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
                 <TrendingUp className="w-7 h-7 text-white" />
               </div>
-              <div className="flex items-center gap-1 text-success-600 bg-success-50 px-2 py-1 rounded-full">
+              <div className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">
                 <ArrowUpRight className="w-4 h-4" />
                 <span className="text-xs font-medium">Entrées</span>
               </div>
@@ -209,20 +208,19 @@ export function Dashboard({ companyId }: DashboardProps) {
             <p className="text-sm font-medium text-slate-500 mb-1">Revenus totaux</p>
             <p className="text-3xl font-bold text-slate-900">{formatCurrency(data.revenue)}</p>
             <div className="mt-3 h-1 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-success-500 rounded-full" style={{ width: '100%' }} />
+              <div className="h-full bg-emerald-500 rounded-full" style={{ width: '100%' }} />
             </div>
           </CardContent>
         </Card>
         
         {/* Dépenses */}
         <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-danger-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
           <CardContent className="py-6 relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-danger-400 to-red-500 flex items-center justify-center shadow-lg shadow-danger-500/20">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-red-400 to-red-600 flex items-center justify-center shadow-lg shadow-red-500/30">
                 <TrendingDown className="w-7 h-7 text-white" />
               </div>
-              <div className="flex items-center gap-1 text-danger-600 bg-danger-50 px-2 py-1 rounded-full">
+              <div className="flex items-center gap-1 text-red-600 bg-red-50 px-2 py-1 rounded-full">
                 <ArrowDownRight className="w-4 h-4" />
                 <span className="text-xs font-medium">Sorties</span>
               </div>
@@ -230,20 +228,19 @@ export function Dashboard({ companyId }: DashboardProps) {
             <p className="text-sm font-medium text-slate-500 mb-1">Dépenses totales</p>
             <p className="text-3xl font-bold text-slate-900">{formatCurrency(data.expenses)}</p>
             <div className="mt-3 h-1 bg-slate-100 rounded-full overflow-hidden">
-              <div className="h-full bg-danger-500 rounded-full" style={{ width: `${Math.min((data.expenses / data.revenue) * 100, 100)}%` }} />
+              <div className="h-full bg-red-500 rounded-full" style={{ width: `${Math.min((data.expenses / data.revenue) * 100, 100)}%` }} />
             </div>
           </CardContent>
         </Card>
         
         {/* TVA */}
         <Card className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-warning-500/10 rounded-full -translate-y-1/2 translate-x-1/2" />
           <CardContent className="py-6 relative">
             <div className="flex items-center justify-between mb-4">
-              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-warning-400 to-amber-500 flex items-center justify-center shadow-lg shadow-warning-500/20">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
                 <Receipt className="w-7 h-7 text-white" />
               </div>
-              <div className="flex items-center gap-1 text-warning-600 bg-warning-50 px-2 py-1 rounded-full">
+              <div className="flex items-center gap-1 text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
                 <span className="text-xs font-medium">À récupérer</span>
               </div>
             </div>
