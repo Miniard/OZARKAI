@@ -228,6 +228,46 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
     ? totalHT + lineItems.reduce((sum, item) => sum + (item.amount * (item.vatRate || 20) / 100), 0)
     : formData.amount || 0;
 
+  // Fonction de téléchargement qui gère les data URLs (base64)
+  const handleDownload = () => {
+    if (!document.fileUrl) return;
+    
+    // Si c'est un data URL (base64), le convertir en blob pour télécharger
+    if (document.fileUrl.startsWith('data:')) {
+      try {
+        // Extraire le type MIME et les données base64
+        const [header, base64Data] = document.fileUrl.split(',');
+        const mimeMatch = header.match(/data:([^;]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+        
+        // Convertir base64 en blob
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: mimeType });
+        
+        // Créer un lien de téléchargement
+        const url = URL.createObjectURL(blob);
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = document.filename || 'document';
+        window.document.body.appendChild(link);
+        link.click();
+        window.document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (error) {
+        console.error('Erreur téléchargement:', error);
+        alert('Erreur lors du téléchargement');
+      }
+    } else {
+      // URL normale, ouvrir dans un nouvel onglet
+      window.open(document.fileUrl, '_blank');
+    }
+  };
+
   const docTypeLabels: Record<string, string> = {
     'FACTURE_ACHAT': 'Facture d\'achat',
     'FACTURE_VENTE': 'Facture de vente',
@@ -276,7 +316,7 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
             </span>
           )}
           
-          <Button variant="outline" onClick={() => window.open(document.fileUrl, '_blank')}>
+          <Button variant="outline" onClick={handleDownload}>
             <Download className="w-4 h-4 mr-2" />
             Télécharger
           </Button>
