@@ -118,15 +118,25 @@ AUTRES RÈGLES:
 
 /**
  * Extrait le texte d'un PDF avec pdfjs-dist
+ * Supporte les fichiers locaux et les buffers en mémoire
  */
-async function extractPDFText(filepath: string): Promise<string> {
+async function extractPDFText(source: string | Buffer): Promise<string> {
   try {
-    console.log('📖 [PDF] Lecture du fichier PDF:', filepath);
     const pdfjs = await import('pdfjs-dist');
-    const { readFile } = await import('fs/promises');
+    let data: Buffer;
     
-    const data = await readFile(filepath);
-    console.log('✅ [PDF] Fichier lu, taille:', data.length, 'bytes');
+    if (typeof source === 'string') {
+      // C'est un chemin de fichier
+      console.log('📖 [PDF] Lecture du fichier PDF:', source);
+      const { readFile } = await import('fs/promises');
+      data = await readFile(source);
+    } else {
+      // C'est déjà un Buffer
+      console.log('📖 [PDF] Traitement du PDF depuis Buffer');
+      data = source;
+    }
+    
+    console.log('✅ [PDF] Données lues, taille:', data.length, 'bytes');
     
     console.log('🔧 [PDF] Chargement du document PDF...');
     const loadingTask = pdfjs.getDocument({
@@ -219,13 +229,12 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
         console.log('📁 [ANALYZE] Chemin fichier:', filepath);
         pdfText = await extractPDFText(filepath);
       } else if (document.fileUrl.startsWith('data:')) {
-        console.log('📁 [ANALYZE] PDF en base64, conversion...');
+        // Mode Vercel : PDF stocké en base64, traiter directement sans fichier temp
+        console.log('📁 [ANALYZE] PDF en base64, traitement direct en mémoire...');
         const base64Data = document.fileUrl.split(',')[1];
         const buffer = Buffer.from(base64Data, 'base64');
-        const tempPath = path.join(process.cwd(), 'public', 'uploads', `temp_${Date.now()}.pdf`);
-        await fs.writeFile(tempPath, buffer);
-        pdfText = await extractPDFText(tempPath);
-        await fs.unlink(tempPath).catch(() => {});
+        console.log('📁 [ANALYZE] Buffer créé, taille:', buffer.length);
+        pdfText = await extractPDFText(buffer);
       }
 
       if (!pdfText || pdfText.length < 10) {

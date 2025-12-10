@@ -3,6 +3,7 @@
  * POST - Importe les pièces jointes d'un email
  * 
  * ANALYSE IA AUTOMATIQUE après import !
+ * + REFRESH TOKEN AUTOMATIQUE
  */
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ import { prisma } from '@/lib/db/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { analyzeDocument } from '@/lib/analyze';
+import { getValidOutlookToken } from '@/lib/oauth-refresh';
 
 const GRAPH_API_URL = 'https://graph.microsoft.com/v1.0';
 
@@ -29,20 +31,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
-    // Récupérer l'utilisateur et ses tokens
+    // Récupérer l'utilisateur
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: {
-        id: true,
-        outlookAccessToken: true,
-        outlookRefreshToken: true,
-        outlookTokenExpiry: true,
-      },
+      select: { id: true },
     });
 
-    if (!user?.outlookAccessToken) {
-      return NextResponse.json({ error: 'Outlook non connecté' }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
+
+    // Obtenir un token valide (refresh automatique si nécessaire)
+    const tokenResult = await getValidOutlookToken(session.user.email);
+    
+    if (!tokenResult.success || !tokenResult.accessToken) {
+      return NextResponse.json({ 
+        error: tokenResult.error || 'Outlook non connecté',
+        needsReconnect: true 
+      }, { status: 401 });
+    }
+    
+    const accessToken = tokenResult.accessToken;
 
     // Vérifier que l'entreprise appartient à l'utilisateur
     const company = await prisma.company.findFirst({
@@ -57,7 +66,7 @@ export async function POST(request: NextRequest) {
     const attachmentsResponse = await fetch(
       `${GRAPH_API_URL}/me/messages/${emailId}/attachments`,
       {
-        headers: { Authorization: `Bearer ${user.outlookAccessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
 
@@ -103,7 +112,7 @@ export async function POST(request: NextRequest) {
         const contentResponse = await fetch(
           `${GRAPH_API_URL}/me/messages/${emailId}/attachments/${attachment.id}/$value`,
           {
-            headers: { Authorization: `Bearer ${user.outlookAccessToken}` },
+            headers: { Authorization: `Bearer ${accessToken}` },
           }
         );
         

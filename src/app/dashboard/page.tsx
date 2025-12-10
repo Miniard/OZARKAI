@@ -16,6 +16,7 @@ import { DocumentFilters } from '@/components/documents/DocumentFilters';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { TeamsPage } from '@/components/teams/TeamsPage';
 import { ConnectorHub } from '@/components/connectors/ConnectorHub';
+import { ExtractionCenter } from '@/components/connectors/ExtractionCenter';
 import { WhatsAppSetup } from '@/components/whatsapp/WhatsAppSetup';
 import { Button } from '@/components/ui/Button';
 import { Card, StatCard } from '@/components/ui/Card';
@@ -154,6 +155,7 @@ export default function DashboardPage() {
     dashboard: { title: 'Tableau de Bord', subtitle: 'Vue d\'ensemble de votre activité' },
     upload: { title: 'Importer des Documents', subtitle: 'Glissez-déposez vos factures' },
     connectors: { title: 'Email Import', subtitle: 'Connectez vos boîtes mail pour importer automatiquement' },
+    extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures par plage de dates' },
     whatsapp: { title: 'WhatsApp Business', subtitle: 'Envoyez vos factures par WhatsApp' },
     documents: { title: 'Mes Factures', subtitle: 'Gérez tous vos documents' },
     teams: { title: 'Équipes', subtitle: 'Collaborez avec vos collègues' },
@@ -349,6 +351,17 @@ export default function DashboardPage() {
             {/* CONNECTORS VIEW */}
             {activeTab === 'connectors' && (
               <ConnectorHub 
+                companyId={selectedCompanyId || ''}
+                onDocumentsImported={() => {
+                  setRefreshKey(p => p + 1);
+                  fetchDocuments();
+                }}
+              />
+            )}
+
+            {/* EXTRACTION VIEW */}
+            {activeTab === 'extraction' && (
+              <ExtractionCenter 
                 companyId={selectedCompanyId || ''}
                 onDocumentsImported={() => {
                   setRefreshKey(p => p + 1);

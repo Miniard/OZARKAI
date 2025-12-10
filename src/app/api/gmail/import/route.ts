@@ -3,6 +3,7 @@
  * POST - Importe les pièces jointes d'un email
  * 
  * ANALYSE IA AUTOMATIQUE après import !
+ * + REFRESH TOKEN AUTOMATIQUE
  */
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +14,7 @@ import { prisma } from '@/lib/db/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { analyzeDocument } from '@/lib/analyze';
+import { getValidGmailToken } from '@/lib/oauth-refresh';
 
 const GMAIL_API_URL = 'https://gmail.googleapis.com/gmail/v1';
 
@@ -29,20 +31,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Paramètres manquants' }, { status: 400 });
     }
 
-    // Récupérer l'utilisateur et ses tokens
+    // Récupérer l'utilisateur
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: {
-        id: true,
-        gmailAccessToken: true,
-        gmailRefreshToken: true,
-        gmailTokenExpiry: true,
-      },
+      select: { id: true },
     });
 
-    if (!user?.gmailAccessToken) {
-      return NextResponse.json({ error: 'Gmail non connecté' }, { status: 401 });
+    if (!user) {
+      return NextResponse.json({ error: 'Utilisateur non trouvé' }, { status: 404 });
     }
+
+    // Obtenir un token valide (refresh automatique si nécessaire)
+    const tokenResult = await getValidGmailToken(session.user.email);
+    
+    if (!tokenResult.success || !tokenResult.accessToken) {
+      return NextResponse.json({ 
+        error: tokenResult.error || 'Gmail non connecté',
+        needsReconnect: true 
+      }, { status: 401 });
+    }
+    
+    const accessToken = tokenResult.accessToken;
 
     // Vérifier que l'entreprise appartient à l'utilisateur
     const company = await prisma.company.findFirst({
@@ -57,7 +66,7 @@ export async function POST(request: NextRequest) {
     const messageResponse = await fetch(
       `${GMAIL_API_URL}/users/me/messages/${emailId}?format=full`,
       {
-        headers: { Authorization: `Bearer ${user.gmailAccessToken}` },
+        headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
 
@@ -77,7 +86,7 @@ export async function POST(request: NextRequest) {
         const attachmentResponse = await fetch(
           `${GMAIL_API_URL}/users/me/messages/${emailId}/attachments/${part.body.attachmentId}`,
           {
-            headers: { Authorization: `Bearer ${user.gmailAccessToken}` },
+            headers: { Authorization: `Bearer ${accessToken}` },
           }
         );
 
