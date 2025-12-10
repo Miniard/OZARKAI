@@ -117,12 +117,14 @@ AUTRES RÈGLES:
 5. Catégorie LOGICIEL/SERVICES pour les outils SaaS (Replicate, AWS, etc.)`;
 
 /**
- * Extrait le texte d'un PDF avec pdfjs-dist
- * Supporte les fichiers locaux et les buffers en mémoire
+ * Extrait le texte d'un PDF avec pdf-parse
+ * Compatible Vercel (serverless) - pas de worker nécessaire
  */
 async function extractPDFText(source: string | Buffer): Promise<string> {
   try {
-    const pdfjs = await import('pdfjs-dist');
+    // pdf-parse est compatible serverless (pas de worker)
+    const pdfParse = (await import('pdf-parse')).default;
+    
     let data: Buffer;
     
     if (typeof source === 'string') {
@@ -138,33 +140,15 @@ async function extractPDFText(source: string | Buffer): Promise<string> {
     
     console.log('✅ [PDF] Données lues, taille:', data.length, 'bytes');
     
-    console.log('🔧 [PDF] Chargement du document PDF...');
-    const loadingTask = pdfjs.getDocument({
-      data: new Uint8Array(data),
-      useSystemFonts: true,
+    console.log('🔧 [PDF] Extraction du texte avec pdf-parse...');
+    const pdfData = await pdfParse(data, {
+      max: 5, // Maximum 5 pages
     });
     
-    const pdfDocument = await loadingTask.promise;
-    const numPages = pdfDocument.numPages;
-    console.log(`📄 [PDF] PDF contient ${numPages} page(s)`);
+    console.log(`📄 [PDF] PDF contient ${pdfData.numpages} page(s)`);
+    console.log('✅ [PDF] Extraction PDF terminée, longueur totale:', pdfData.text.length);
     
-    let fullText = '';
-    const maxPages = Math.min(numPages, 5);
-    console.log(`📄 [PDF] Extraction des ${maxPages} premières pages...`);
-    
-    for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
-      console.log(`📄 [PDF] Extraction page ${pageNum}/${maxPages}...`);
-      const page = await pdfDocument.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n\n';
-      console.log(`✅ [PDF] Page ${pageNum} extraite, ${pageText.length} caractères`);
-    }
-    
-    console.log('✅ [PDF] Extraction PDF terminée, longueur totale:', fullText.length);
-    return fullText.trim();
+    return pdfData.text.trim();
   } catch (error) {
     console.error('❌ [PDF] Erreur extraction PDF:', error);
     throw new Error(`Impossible d'extraire le PDF: ${error}`);
