@@ -84,6 +84,8 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
 
   const uploadAndAnalyze = async (uploadedFile: UploadedFile) => {
     try {
+      console.log('📤 [UPLOAD] Début upload:', uploadedFile.file.name);
+      
       // Update status: uploading
       setFiles((prev) =>
         prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: 'uploading' as const } : f))
@@ -93,22 +95,27 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
       formData.append('file', uploadedFile.file);
       formData.append('companyId', companyId);
 
+      console.log('📤 [UPLOAD] Envoi vers /api/upload-local...');
       const uploadRes = await fetch('/api/upload-local', {
         method: 'POST',
         body: formData,
       });
 
       if (!uploadRes.ok) {
+        const errorText = await uploadRes.text();
+        console.error('❌ [UPLOAD] Erreur:', uploadRes.status, errorText);
         throw new Error(`Erreur d'upload: ${uploadRes.statusText}`);
       }
 
       const uploadData = await uploadRes.json();
+      console.log('✅ [UPLOAD] Upload réussi, documentId:', uploadData.documentId);
 
       // Update status: analyzing
       setFiles((prev) =>
         prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: 'analyzing' as const } : f))
       );
 
+      console.log('🤖 [ANALYZE] Début analyse IA pour:', uploadData.documentId);
       const analyzeRes = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,10 +123,16 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
       });
 
       if (!analyzeRes.ok) {
+        const errorText = await analyzeRes.text();
+        console.error('❌ [ANALYZE] Erreur:', analyzeRes.status, errorText);
         throw new Error(`Erreur d'analyse: ${analyzeRes.statusText}`);
       }
 
       const analyzeData = await analyzeRes.json();
+      console.log('✅ [ANALYZE] Analyse réussie!');
+      console.log('📊 [ANALYZE] Lignes extraites:', analyzeData.analysis?.lineItems?.length || 0);
+      console.log('💰 [ANALYZE] Montant:', analyzeData.analysis?.montantTTC);
+      console.log('🏢 [ANALYZE] Fournisseur:', analyzeData.analysis?.fournisseur);
 
       // Update status: success
       setFiles((prev) =>
@@ -129,17 +142,23 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
                 ...f,
                 status: 'success' as const,
                 result: {
-                  type: analyzeData.document.docType || 'AUTRE',
-                  amount: analyzeData.document.amount || 0,
-                  category: analyzeData.document.analysisData?.category || 'Non catégorisé',
-                  supplier: analyzeData.document.supplier,
+                  type: analyzeData.document?.docType || analyzeData.analysis?.type || 'AUTRE',
+                  amount: analyzeData.document?.amount || analyzeData.analysis?.montantTTC || 0,
+                  category: analyzeData.document?.analysisData?.category || analyzeData.analysis?.category || 'Non catégorisé',
+                  supplier: analyzeData.document?.supplier || analyzeData.analysis?.fournisseur,
                 },
               }
             : f
         )
       );
+      
+      // Rafraîchir la liste des documents
+      if (onUploadComplete) {
+        console.log('🔄 [UPLOAD] Rafraîchissement de la liste...');
+        onUploadComplete();
+      }
     } catch (error) {
-      console.error('Error uploading/analyzing:', error);
+      console.error('❌ [UPLOAD] Erreur complète:', error);
       setFiles((prev) =>
         prev.map((f) =>
           f.id === uploadedFile.id

@@ -1,6 +1,8 @@
 /**
  * API Route : Upload LOCAL (sans S3)
  * POST /api/upload-local - Upload direct sur le serveur
+ * 
+ * ANALYSE IA AUTOMATIQUE après upload !
  */
 
 export const dynamic = 'force-dynamic';
@@ -104,8 +106,12 @@ export async function POST(request: NextRequest) {
         fileSize: file.size,
         companyId,
         analyzed: false,
+        source: 'MANUAL',
       },
     });
+
+    // Note: L'analyse IA sera déclenchée par le client via /api/analyze
+    // pour éviter un timeout sur les gros fichiers
 
     return NextResponse.json({
       success: true,

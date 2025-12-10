@@ -109,21 +109,21 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   callbacks: {
     async signIn({ user, account }) {
       try {
-        if (account?.provider !== 'credentials') {
-          // OAuth : créer l'utilisateur s'il n'existe pas
+      if (account?.provider !== 'credentials') {
+        // OAuth : créer l'utilisateur s'il n'existe pas
           let existingUser = await prisma.user.findUnique({
-            where: { email: user.email! },
+          where: { email: user.email! },
             include: { companies: true },
-          });
+        });
 
-          if (!existingUser) {
+        if (!existingUser) {
             // Créer l'utilisateur ET son entreprise par défaut
             existingUser = await prisma.user.create({
-              data: {
-                email: user.email!,
-                name: user.name,
-                role: 'USER',
-                passwordHash: '',
+            data: {
+              email: user.email!,
+              name: user.name,
+              role: 'USER',
+              passwordHash: '',
                 companies: {
                   create: {
                     name: user.name ? `Entreprise de ${user.name}` : 'Mon entreprise',
@@ -143,12 +143,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 companyType: 'MICRO_ENTREPRISE',
                 vatRegime: 'FRANCHISE_BASE',
                 userId: existingUser.id,
-              },
-            });
+            },
+          });
             console.log('Entreprise créée pour utilisateur existant:', existingUser.email);
-          }
         }
-        return true;
+      }
+      return true;
       } catch (error) {
         console.error('SignIn callback error:', error);
         // Retourner true quand même pour permettre la connexion
@@ -159,22 +159,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 
     async jwt({ token, user, account }) {
       try {
-        if (user) {
-          const dbUser = await prisma.user.findUnique({
-            where: { email: user.email! },
-          });
-          
-          token.id = dbUser?.id || user.id;
-          token.role = dbUser?.role || 'USER';
-          token.provider = account?.provider;
-        }
+      if (user) {
+        const dbUser = await prisma.user.findUnique({
+          where: { email: user.email! },
+        });
         
-        // Sauvegarder le refresh token pour Gmail plus tard
-        if (account?.refresh_token) {
-          token.refreshToken = account.refresh_token;
-        }
-        if (account?.access_token) {
-          token.accessToken = account.access_token;
+        token.id = dbUser?.id || user.id;
+        token.role = dbUser?.role || 'USER';
+        token.provider = account?.provider;
+      }
+      
+      // Sauvegarder le refresh token pour Gmail plus tard
+      if (account?.refresh_token) {
+        token.refreshToken = account.refresh_token;
+      }
+      if (account?.access_token) {
+        token.accessToken = account.access_token;
         }
       } catch (error) {
         console.error('JWT callback error:', error);

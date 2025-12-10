@@ -1,6 +1,8 @@
 /**
  * API : Importer une facture depuis Gmail
  * POST - Importe les pièces jointes d'un email
+ * 
+ * ANALYSE IA AUTOMATIQUE après import !
  */
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +12,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { analyzeDocument } from '@/lib/analyze';
 
 const GMAIL_API_URL = 'https://gmail.googleapis.com/gmail/v1';
 
@@ -117,6 +120,14 @@ export async function POST(request: NextRequest) {
         });
 
         importedDocuments.push(document.id);
+        
+        // 🔥 ANALYSE IA AUTOMATIQUE
+        try {
+          console.log('🔍 Analyse Gmail auto:', document.id);
+          await analyzeDocument(document.id);
+        } catch (e) {
+          console.error('⚠️ Erreur analyse Gmail:', e);
+        }
       }
     }
 
@@ -124,6 +135,7 @@ export async function POST(request: NextRequest) {
       success: true,
       importedCount: importedDocuments.length,
       documentIds: importedDocuments,
+      analyzed: true,
     });
   } catch (error) {
     console.error('Erreur import Gmail:', error);

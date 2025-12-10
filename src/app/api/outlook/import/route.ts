@@ -1,6 +1,8 @@
 /**
  * API : Importer une facture depuis Outlook
  * POST - Importe les pièces jointes d'un email
+ * 
+ * ANALYSE IA AUTOMATIQUE après import !
  */
 
 export const dynamic = 'force-dynamic';
@@ -10,6 +12,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { analyzeDocument } from '@/lib/analyze';
 
 const GRAPH_API_URL = 'https://graph.microsoft.com/v1.0';
 
@@ -135,12 +138,21 @@ export async function POST(request: NextRequest) {
       });
 
       importedDocuments.push(document.id);
+
+      // 🔥 ANALYSE IA AUTOMATIQUE
+      try {
+        console.log('🔍 Analyse Outlook auto:', document.id);
+        await analyzeDocument(document.id);
+      } catch (e) {
+        console.error('⚠️ Erreur analyse Outlook:', e);
+      }
     }
 
     return NextResponse.json({
       success: true,
       importedCount: importedDocuments.length,
       documentIds: importedDocuments,
+      analyzed: true,
     });
   } catch (error) {
     console.error('Erreur import Outlook:', error);

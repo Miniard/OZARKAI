@@ -14,6 +14,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db/prisma';
+import { analyzeDocument } from '@/lib/analyze';
 
 // Validation du webhook (optionnel - pour vérifier que c'est bien Twilio)
 export async function GET(request: NextRequest) {
@@ -201,21 +202,17 @@ async function handleMedia(
 
     console.log('✅ Document créé:', document.id);
 
-    // Analyser automatiquement si c'est une image
-    if (mediaType.startsWith('image/')) {
-      try {
-        const analyzeResponse = await fetch(`${process.env.NEXTAUTH_URL}/api/documents/analyze`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ documentId: document.id }),
-        });
-
-        if (analyzeResponse.ok) {
-          console.log('✅ Analyse lancée pour:', document.id);
-        }
-      } catch (e) {
-        console.error('Erreur analyse:', e);
+    // 🔥 ANALYSE IA AUTOMATIQUE (images ET PDFs)
+    try {
+      console.log('🔍 Analyse WhatsApp auto:', document.id);
+      const result = await analyzeDocument(document.id);
+      if (result.success) {
+        console.log('✅ Analyse terminée pour:', document.id);
+      } else {
+        console.error('⚠️ Analyse échouée:', result.error);
       }
+    } catch (e) {
+      console.error('Erreur analyse:', e);
     }
 
   } catch (error) {

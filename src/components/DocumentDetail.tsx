@@ -1,27 +1,25 @@
 /**
- * Composant d'affichage détaillé d'un document analysé
- * Design inspiré de Receiptor AI - Split view avec formulaire à gauche et aperçu à droite
+ * DocumentDetail - Vue plein écran d'une facture
+ * PDF en grand + lignes en dessous
  */
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { formatCurrency, formatDateShort } from '@/lib/utils';
 import { 
-  FileText, Calendar, Building2, Receipt, Hash, Globe, 
-  CreditCard, CheckCircle2, AlertCircle, Eye, X, Download, 
-  Maximize2, Minimize2, Sparkles, Loader2, Save, Trash2,
-  ChevronLeft, ChevronRight, ZoomIn, ZoomOut, RotateCw,
-  Package, Link2, BadgePercent, Plus, ExternalLink
+  FileText, Calendar, Building2, Receipt, X, Download, 
+  Maximize2, Minimize2, Loader2, Save, Trash2,
+  ZoomIn, ZoomOut, Package, Plus, ShoppingCart,
+  CreditCard, ArrowLeft, Edit3, Check, Sparkles, RefreshCw
 } from 'lucide-react';
 
 interface LineItem {
   description: string;
-  quantity?: number;
-  unitPrice?: number;
+  quantity: number;
+  unitPrice: number;
   amount: number;
-  vat?: number;
+  vatRate?: number;
 }
 
 interface DocumentDetailProps {
@@ -38,113 +36,183 @@ interface DocumentDetailProps {
     analyzed: boolean;
     analysisData: any;
     source?: string;
+    createdAt?: Date | string;
   };
-  onAnalyzed?: () => void;
+  onClose?: () => void;
   onSave?: (data: any) => void;
   onDelete?: () => void;
+  onAnalyzed?: () => void;
 }
 
-type TabType = 'basique' | 'lignes' | 'exportations' | 'doublons';
-
-export function DocumentDetail({ document, onAnalyzed, onSave, onDelete }: DocumentDetailProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('basique');
+export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed }: DocumentDetailProps) {
+  const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [zoom, setZoom] = useState(100);
+  const [isEditing, setIsEditing] = useState(false);
   
-  // États du formulaire éditables
+  // Données du formulaire
   const [formData, setFormData] = useState({
     docType: document.docType || 'FACTURE_ACHAT',
     supplier: document.supplier || '',
-    supplierWebsite: document.analysisData?.supplierWebsite || '',
     supplierVatNumber: document.analysisData?.supplierVatNumber || '',
     invoiceNumber: document.analysisData?.invoiceNumber || '',
-    receiptNumber: document.analysisData?.receiptNumber || '',
-    transactionId: document.analysisData?.transactionId || '',
     date: document.date ? new Date(document.date).toISOString().split('T')[0] : '',
     amount: document.amount || 0,
     vat: document.vat || 0,
-    category: document.analysisData?.category || '',
+    currency: document.analysisData?.currency || 'EUR',
     paymentMethod: document.analysisData?.paymentMethod || '',
-    billedTo: document.analysisData?.billedTo || '',
+    category: document.analysisData?.category || '',
   });
 
+  // Lignes du document
   const [lineItems, setLineItems] = useState<LineItem[]>(
     document.analysisData?.lineItems || []
   );
 
-  // États du viewer PDF
-  const [zoom, setZoom] = useState(100);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  
   const isPDF = document.fileType === 'pdf' || document.filename?.toLowerCase().endsWith('.pdf');
   const isImage = document.fileType?.startsWith('image') || 
     /\.(jpg|jpeg|png|gif|webp)$/i.test(document.filename || '');
 
-  // Mettre à jour formData quand le document change
+  // Sync quand le document change
   useEffect(() => {
     setFormData({
       docType: document.docType || 'FACTURE_ACHAT',
       supplier: document.supplier || '',
-      supplierWebsite: document.analysisData?.supplierWebsite || '',
       supplierVatNumber: document.analysisData?.supplierVatNumber || '',
       invoiceNumber: document.analysisData?.invoiceNumber || '',
-      receiptNumber: document.analysisData?.receiptNumber || '',
-      transactionId: document.analysisData?.transactionId || '',
       date: document.date ? new Date(document.date).toISOString().split('T')[0] : '',
       amount: document.amount || 0,
       vat: document.vat || 0,
-      category: document.analysisData?.category || '',
+      currency: document.analysisData?.currency || 'EUR',
       paymentMethod: document.analysisData?.paymentMethod || '',
-      billedTo: document.analysisData?.billedTo || '',
+      category: document.analysisData?.category || '',
     });
     setLineItems(document.analysisData?.lineItems || []);
-  }, [document]);
+    setHasChanges(false);
+  }, [document.id]);
+
+  // 🔥 ANALYSE AUTOMATIQUE si document pas encore analysé
+  useEffect(() => {
+    const autoAnalyze = async () => {
+      // Ne pas analyser si déjà analysé ou si analyse en cours
+      if (document.analyzed || isAnalyzing) return;
+      
+      // Ne pas analyser si on a déjà des données
+      if (document.analysisData?.lineItems?.length > 0) return;
+      
+      console.log('🤖 [AUTO] Lancement analyse automatique pour:', document.id);
+      setIsAnalyzing(true);
+      setAnalyzeError(null);
+      
+      try {
+        const response = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ documentId: document.id }),
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Erreur lors de l\'analyse');
+        }
+
+        console.log('✅ [AUTO] Analyse automatique réussie!');
+        console.log('📊 [AUTO] Lignes extraites:', data.analysis?.lineItems?.length || 0);
+        
+        // Mettre à jour les données locales avec le résultat
+        if (data.analysis) {
+          setFormData({
+            docType: data.analysis.type || 'FACTURE_ACHAT',
+            supplier: data.analysis.fournisseur || '',
+            supplierVatNumber: data.analysis.fournisseurTVA || '',
+            invoiceNumber: data.analysis.numero || '',
+            date: data.analysis.date || '',
+            amount: data.analysis.montantTTC || 0,
+            vat: data.analysis.tva || 0,
+            currency: data.analysis.devise || 'EUR',
+            paymentMethod: data.analysis.paymentMethod || '',
+            category: data.analysis.category || '',
+          });
+          
+          if (data.analysis.lineItems && data.analysis.lineItems.length > 0) {
+            setLineItems(data.analysis.lineItems);
+          }
+        }
+        
+        // Rafraîchir la liste
+        if (onAnalyzed) onAnalyzed();
+        
+      } catch (error) {
+        console.error('❌ [AUTO] Erreur analyse:', error);
+        setAnalyzeError(error instanceof Error ? error.message : 'Erreur inconnue');
+      } finally {
+        setIsAnalyzing(false);
+      }
+    };
+
+    autoAnalyze();
+  }, [document.id, document.analyzed]);
 
   const handleFieldChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
   };
 
-  const handleAnalyze = async () => {
-    setIsAnalyzing(true);
-    setAnalyzeError(null);
+  const handleLineChange = (index: number, field: keyof LineItem, value: any) => {
+    const updated = [...lineItems];
+    updated[index] = { ...updated[index], [field]: value };
     
-    try {
-      const response = await fetch('/api/documents/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: document.id }),
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Erreur lors de l\'analyse');
-      }
-      
-      if (onAnalyzed) {
-        onAnalyzed();
-      } else {
-        window.location.reload();
-      }
-    } catch (error) {
-      setAnalyzeError(error instanceof Error ? error.message : 'Erreur inconnue');
-    } finally {
-      setIsAnalyzing(false);
+    if (field === 'quantity' || field === 'unitPrice') {
+      updated[index].amount = (updated[index].quantity || 0) * (updated[index].unitPrice || 0);
     }
+    
+    setLineItems(updated);
+    setHasChanges(true);
+  };
+
+  const addLine = () => {
+    setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0, amount: 0 }]);
+    setHasChanges(true);
+    setIsEditing(true);
+  };
+
+  const removeLine = (index: number) => {
+    setLineItems(lineItems.filter((_, i) => i !== index));
+    setHasChanges(true);
   };
 
   const handleSave = async () => {
     setIsSaving(true);
     try {
+      const totalHT = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
+      const totalVAT = lineItems.reduce((sum, item) => {
+        const vatRate = item.vatRate || 20;
+        return sum + (item.amount * vatRate / 100);
+      }, 0);
+
+      const dataToSave = {
+        ...formData,
+        amount: totalHT + totalVAT || formData.amount,
+        vat: totalVAT || formData.vat,
+        lineItems,
+      };
+
       if (onSave) {
-        await onSave({ ...formData, lineItems });
+        await onSave(dataToSave);
+      } else {
+        await fetch(`/api/documents/${document.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dataToSave),
+        });
       }
+      
       setHasChanges(false);
+      setIsEditing(false);
+      if (onAnalyzed) onAnalyzed();
     } catch (error) {
       console.error('Erreur sauvegarde:', error);
     } finally {
@@ -152,682 +220,385 @@ export function DocumentDetail({ document, onAnalyzed, onSave, onDelete }: Docum
     }
   };
 
+  const currencySymbol = formData.currency === 'EUR' ? '€' : formData.currency === 'USD' ? '$' : formData.currency;
+  const totalHT = lineItems.length > 0 
+    ? lineItems.reduce((sum, item) => sum + (item.amount || 0), 0)
+    : (formData.amount || 0) - (formData.vat || 0);
+  const totalTTC = lineItems.length > 0 
+    ? totalHT + lineItems.reduce((sum, item) => sum + (item.amount * (item.vatRate || 20) / 100), 0)
+    : formData.amount || 0;
+
   const docTypeLabels: Record<string, string> = {
-    'FACTURE_ACHAT': 'Facture (achat)',
-    'FACTURE_VENTE': 'Facture (vente)',
+    'FACTURE_ACHAT': 'Facture d\'achat',
+    'FACTURE_VENTE': 'Facture de vente',
     'NOTE_FRAIS': 'Note de frais',
     'RECU': 'Reçu',
     'DEVIS': 'Devis',
     'AUTRE': 'Autre',
   };
 
-  const categoryOptions = [
-    'Services logiciels et abonnement',
-    'Fournitures de bureau',
-    'Marketing et publicité',
-    'Télécommunications',
-    'Transport et déplacements',
-    'Restauration',
-    'Hébergement',
-    'Services professionnels',
-    'Équipement informatique',
-    'Autre',
-  ];
-
-  // Si non analysé, afficher le bouton d'analyse
-  if (!document.analyzed || !document.analysisData) {
-    return (
-      <div className="h-full flex">
-        {/* Panel gauche - Message */}
-        <div className="w-1/2 border-r border-slate-200 p-8 flex flex-col items-center justify-center bg-slate-50">
-          <AlertCircle className="w-16 h-16 text-amber-400 mb-6" />
-          <h3 className="text-xl font-semibold text-slate-800 mb-2">Document non analysé</h3>
-          <p className="text-slate-500 text-center mb-6">
-            Ce document n'a pas encore été analysé par l'IA
-          </p>
-          
-          {analyzeError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm w-full max-w-md">
-              {analyzeError}
-            </div>
-          )}
-          
-          <Button 
-            onClick={handleAnalyze}
-            disabled={isAnalyzing}
-            size="lg"
-            className="bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
-          >
-            {isAnalyzing ? (
-              <>
-                <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Analyse en cours...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-5 h-5 mr-2" />
-                Analyser avec l'IA
-              </>
-            )}
-          </Button>
-        </div>
-        
-        {/* Panel droit - Aperçu */}
-        <div className="w-1/2 bg-slate-100 flex items-center justify-center">
-          {document.fileUrl ? (
-            <DocumentViewer 
-              url={document.fileUrl}
-              isPDF={isPDF}
-              isImage={isImage}
-              filename={document.filename}
-              zoom={zoom}
-              onZoomChange={setZoom}
-            />
-          ) : (
-            <div className="text-slate-400 text-center">
-              <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-              <p>Aperçu non disponible</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  const montantHT = (formData.amount || 0) - (formData.vat || 0);
-
   return (
-    <div className="h-full flex flex-col">
-      {/* Header avec actions */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-white">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Receipt className="w-5 h-5 text-slate-400" />
-            <span className="font-medium text-slate-700">
-              {formData.docType === 'RECU' ? 'Reçu' : 'Facture'} # {formData.invoiceNumber || formData.receiptNumber || 'N/A'}
-            </span>
+    <div className="fixed inset-0 bg-slate-100 z-50 overflow-hidden flex flex-col">
+      {/* HEADER */}
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5 text-slate-600" />
+          </button>
+          <div>
+            <h1 className="text-lg font-semibold text-slate-900">
+              {formData.invoiceNumber ? `Facture #${formData.invoiceNumber}` : document.filename}
+            </h1>
+            <p className="text-sm text-slate-500">
+              {formData.supplier || 'Fournisseur non défini'} • {formData.date ? new Date(formData.date).toLocaleDateString('fr-FR') : 'Date non définie'}
+            </p>
           </div>
-          <span className="text-slate-400">•</span>
-          <span className="text-slate-600">{formData.supplier || 'Fournisseur inconnu'}</span>
         </div>
-        
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-slate-400">
-            Dernière mise à jour : {formatDateShort(new Date())}
-          </span>
-          <Button variant="outline" size="sm" onClick={() => window.open(document.fileUrl, '_blank')}>
-            <Download className="w-4 h-4 mr-1" />
+
+        <div className="flex items-center gap-3">
+          {analyzeError && (
+            <span className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-full">
+              ⚠️ {analyzeError}
+            </span>
+          )}
+          {isAnalyzing && (
+            <span className="text-sm text-violet-600 bg-violet-50 px-3 py-1 rounded-full flex items-center gap-2">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              Analyse IA en cours...
+            </span>
+          )}
+          {hasChanges && (
+            <span className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
+              Non sauvegardé
+            </span>
+          )}
+          
+          <Button variant="outline" onClick={() => window.open(document.fileUrl, '_blank')}>
+            <Download className="w-4 h-4 mr-2" />
             Télécharger
           </Button>
           {onDelete && (
-            <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
-              <Trash2 className="w-4 h-4 mr-1" />
-              Supprimer
+            <Button variant="outline" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
+              <Trash2 className="w-4 h-4" />
             </Button>
           )}
           <Button 
-            size="sm" 
             onClick={handleSave}
             disabled={!hasChanges || isSaving}
             className="bg-emerald-500 hover:bg-emerald-600"
           >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4 mr-1" />
-            )}
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
             Sauvegarder
           </Button>
         </div>
-      </div>
+      </header>
 
-      {/* Content split */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Panel gauche - Formulaire */}
-        <div className="w-1/2 border-r border-slate-200 overflow-y-auto bg-white">
-          {/* Tabs */}
-          <div className="flex border-b border-slate-200 sticky top-0 bg-white z-10">
-            <TabButton 
-              active={activeTab === 'basique'} 
-              onClick={() => setActiveTab('basique')}
-            >
-              Basique
-            </TabButton>
-            <TabButton 
-              active={activeTab === 'lignes'} 
-              onClick={() => setActiveTab('lignes')}
-              badge={lineItems.length}
-            >
-              Éléments de ligne
-            </TabButton>
-            <TabButton 
-              active={activeTab === 'exportations'} 
-              onClick={() => setActiveTab('exportations')}
-              badge={0}
-            >
-              Exportations
-            </TabButton>
-            <TabButton 
-              active={activeTab === 'doublons'} 
-              onClick={() => setActiveTab('doublons')}
-              badge={0}
-            >
-              Doublons
-            </TabButton>
+      {/* MAIN CONTENT */}
+      <div className="flex-1 overflow-auto">
+        <div className="max-w-6xl mx-auto p-6 space-y-6">
+          
+          {/* === PDF VIEWER - GRAND === */}
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            {/* Toolbar PDF */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
+              <span className="text-sm text-slate-600 font-medium">{document.filename}</span>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setZoom(Math.max(25, zoom - 25))}
+                  className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  <ZoomOut className="w-4 h-4 text-slate-600" />
+                </button>
+                <span className="text-sm text-slate-600 min-w-[50px] text-center">{zoom}%</span>
+                <button 
+                  onClick={() => setZoom(Math.min(200, zoom + 25))}
+                  className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                >
+                  <ZoomIn className="w-4 h-4 text-slate-600" />
+                </button>
+              </div>
+            </div>
+
+            {/* PDF/Image */}
+            <div className="bg-slate-800 flex items-center justify-center p-8 min-h-[600px]">
+              {document.fileUrl ? (
+                <div 
+                  style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
+                  className="transition-transform duration-200"
+                >
+                  {isPDF ? (
+                    <iframe 
+                      src={document.fileUrl} 
+                      className="bg-white rounded-lg shadow-2xl"
+                      style={{ width: '800px', height: '1000px' }}
+                      title={document.filename}
+                    />
+                  ) : isImage ? (
+                    <img 
+                      src={document.fileUrl} 
+                      alt={document.filename}
+                      className="max-w-full max-h-[800px] rounded-lg shadow-2xl"
+                    />
+                  ) : (
+                    <div className="text-center text-white py-20">
+                      <FileText className="w-24 h-24 mx-auto mb-4 opacity-30" />
+                      <p className="text-xl">Aperçu non disponible</p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center text-white py-20">
+                  <FileText className="w-24 h-24 mx-auto mb-4 opacity-30" />
+                  <p className="text-xl">Aucun fichier</p>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Tab content */}
-          <div className="p-6">
-            {activeTab === 'basique' && (
-              <div className="space-y-6">
-                {/* Section Général */}
-                <Section title="Général">
-                  <FormField label="Source">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Globe className="w-4 h-4" />
-                      <span>{document.source || 'Import manuel'}</span>
-                    </div>
-                  </FormField>
-                  
-                  <FormField label="Facturé à">
-                    <select
-                      value={formData.billedTo}
-                      onChange={(e) => handleFieldChange('billedTo', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      <option value="">Sélectionnez l'entité commerciale...</option>
-                      <option value="personnel">Personnel</option>
-                      <option value="entreprise">Entreprise</option>
-                    </select>
-                  </FormField>
-                </Section>
+          {/* === ANALYSE EN COURS === */}
+          {isAnalyzing && (
+            <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-2xl p-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
+                  <Loader2 className="w-6 h-6 text-violet-600 animate-spin" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-violet-900 mb-1">
+                    🔍 Extraction automatique en cours...
+                  </h3>
+                  <p className="text-violet-700 text-sm">
+                    Notre IA extrait les informations de votre document : fournisseur, montants, lignes de produits...
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
-                {/* Type et Compte */}
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField label="Type">
+          {/* === INFOS PRINCIPALES === */}
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Montant */}
+            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white">
+              <p className="text-emerald-100 text-sm font-medium mb-1">Montant Total TTC</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-5xl font-bold">{totalTTC.toFixed(2)}</span>
+                <span className="text-3xl text-emerald-200">{currencySymbol}</span>
+              </div>
+              <div className="flex gap-4 mt-4 text-sm text-emerald-100">
+                <span>HT: {totalHT.toFixed(2)} {currencySymbol}</span>
+                <span>•</span>
+                <span>TVA: {(totalTTC - totalHT).toFixed(2)} {currencySymbol}</span>
+              </div>
+            </div>
+
+            {/* Fournisseur */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <div className="flex items-center gap-2 mb-4">
+                <Building2 className="w-5 h-5 text-slate-400" />
+                <h3 className="font-semibold text-slate-700">Fournisseur</h3>
+              </div>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={formData.supplier}
+                  onChange={(e) => handleFieldChange('supplier', e.target.value)}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-lg font-medium"
+                  placeholder="Nom du fournisseur"
+                />
+              ) : (
+                <p className="text-xl font-semibold text-slate-900">{formData.supplier || '-'}</p>
+              )}
+              <p className="text-sm text-slate-500 mt-2">
+                {formData.supplierVatNumber || 'N° TVA non renseigné'}
+              </p>
+            </div>
+
+            {/* Infos */}
+            <div className="bg-white rounded-2xl p-6 border border-slate-200">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Receipt className="w-5 h-5 text-slate-400" />
+                  <h3 className="font-semibold text-slate-700">Informations</h3>
+                </div>
+                <button 
+                  onClick={() => setIsEditing(!isEditing)}
+                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  {isEditing ? <Check className="w-4 h-4 text-emerald-600" /> : <Edit3 className="w-4 h-4 text-slate-400" />}
+                </button>
+              </div>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Type</span>
+                  {isEditing ? (
                     <select
                       value={formData.docType}
                       onChange={(e) => handleFieldChange('docType', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="px-2 py-1 border border-slate-200 rounded text-sm"
                     >
                       {Object.entries(docTypeLabels).map(([value, label]) => (
                         <option key={value} value={value}>{label}</option>
                       ))}
                     </select>
-                  </FormField>
-                  
-                  <FormField label="Compte">
-                    <select
-                      value={formData.category}
-                      onChange={(e) => handleFieldChange('category', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      <option value="">Sélectionnez...</option>
-                      {categoryOptions.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                  </FormField>
+                  ) : (
+                    <span className="font-medium text-slate-900">{docTypeLabels[formData.docType]}</span>
+                  )}
                 </div>
-
-                {/* Numéros */}
-                <div className="grid grid-cols-3 gap-4">
-                  <FormField label="Facture #">
+                <div className="flex justify-between">
+                  <span className="text-slate-500">Date</span>
+                  {isEditing ? (
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleFieldChange('date', e.target.value)}
+                      className="px-2 py-1 border border-slate-200 rounded text-sm"
+                    />
+                  ) : (
+                    <span className="font-medium text-slate-900">
+                      {formData.date ? new Date(formData.date).toLocaleDateString('fr-FR') : '-'}
+                    </span>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-slate-500">N° Facture</span>
+                  {isEditing ? (
                     <input
                       type="text"
                       value={formData.invoiceNumber}
                       onChange={(e) => handleFieldChange('invoiceNumber', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="px-2 py-1 border border-slate-200 rounded text-sm w-32 text-right"
                     />
-                  </FormField>
-                  
-                  <FormField label="Reçu #">
-                    <input
-                      type="text"
-                      value={formData.receiptNumber}
-                      onChange={(e) => handleFieldChange('receiptNumber', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                  </FormField>
-                  
-                  <FormField label="Transaction n°">
-                    <input
-                      type="text"
-                      value={formData.transactionId}
-                      onChange={(e) => handleFieldChange('transactionId', e.target.value)}
-                      placeholder="ID de transaction"
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                  </FormField>
+                  ) : (
+                    <span className="font-medium text-slate-900">{formData.invoiceNumber || '-'}</span>
+                  )}
                 </div>
-
-                {/* Date */}
-                <FormField label="Date de la transaction">
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => handleFieldChange('date', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  />
-                </FormField>
-
-                {/* Fournisseur */}
-                <Section title="Fournisseur">
-                  <FormField label="Nom">
-                    <input
-                      type="text"
-                      value={formData.supplier}
-                      onChange={(e) => handleFieldChange('supplier', e.target.value)}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    />
-                  </FormField>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <FormField label="Site web">
-                      <div className="relative">
-                        <input
-                          type="url"
-                          value={formData.supplierWebsite}
-                          onChange={(e) => handleFieldChange('supplierWebsite', e.target.value)}
-                          placeholder="https://..."
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                        {formData.supplierWebsite && (
-                          <a 
-                            href={formData.supplierWebsite} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-emerald-500"
-                          >
-                            <ExternalLink className="w-4 h-4" />
-                          </a>
-                        )}
-                      </div>
-                    </FormField>
-                    
-                    <FormField label="Numéro d'identification fiscale">
-                      <input
-                        type="text"
-                        value={formData.supplierVatNumber}
-                        onChange={(e) => handleFieldChange('supplierVatNumber', e.target.value)}
-                        placeholder="Numéro d'identification..."
-                        className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      />
-                    </FormField>
-                  </div>
-                </Section>
-
-                {/* Montants */}
-                <Section title="Montants">
-                  <div className="grid grid-cols-3 gap-4">
-                    <FormField label="Montant HT">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          value={montantHT.toFixed(2)}
-                          readOnly
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
-                      </div>
-                    </FormField>
-                    
-                    <FormField label="TVA">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.vat}
-                          onChange={(e) => handleFieldChange('vat', parseFloat(e.target.value) || 0)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
-                      </div>
-                    </FormField>
-                    
-                    <FormField label="Montant TTC">
-                      <div className="relative">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.amount}
-                          onChange={(e) => handleFieldChange('amount', parseFloat(e.target.value) || 0)}
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 font-semibold"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">€</span>
-                      </div>
-                    </FormField>
-                  </div>
-                </Section>
-
-                {/* Paiement */}
-                <FormField label="Méthode de paiement">
-                  <select
-                    value={formData.paymentMethod}
-                    onChange={(e) => handleFieldChange('paymentMethod', e.target.value)}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                  >
-                    <option value="">Sélectionnez...</option>
-                    <option value="card">Carte bancaire</option>
-                    <option value="transfer">Virement</option>
-                    <option value="cash">Espèces</option>
-                    <option value="check">Chèque</option>
-                    <option value="paypal">PayPal</option>
-                    <option value="other">Autre</option>
-                  </select>
-                </FormField>
               </div>
-            )}
-
-            {activeTab === 'lignes' && (
-              <div className="space-y-4">
-                {lineItems.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">
-                    <Package className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Aucun élément de ligne détecté</p>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      className="mt-4"
-                      onClick={() => setLineItems([{ description: '', quantity: 1, unitPrice: 0, amount: 0 }])}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Ajouter une ligne
-                    </Button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="space-y-3">
-                      {lineItems.map((item, index) => (
-                        <div key={index} className="p-4 border border-slate-200 rounded-lg bg-slate-50">
-                          <div className="flex items-start justify-between mb-3">
-                            <span className="text-sm font-medium text-slate-500">Ligne {index + 1}</span>
-                            <button 
-                              onClick={() => setLineItems(items => items.filter((_, i) => i !== index))}
-                              className="text-slate-400 hover:text-red-500"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
-                          </div>
-                          <div className="grid grid-cols-4 gap-3">
-                            <div className="col-span-2">
-                              <label className="text-xs text-slate-500">Description</label>
-                              <input
-                                type="text"
-                                value={item.description}
-                                onChange={(e) => {
-                                  const updated = [...lineItems];
-                                  updated[index].description = e.target.value;
-                                  setLineItems(updated);
-                                  setHasChanges(true);
-                                }}
-                                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs text-slate-500">Qté</label>
-                              <input
-                                type="number"
-                                value={item.quantity || ''}
-                                onChange={(e) => {
-                                  const updated = [...lineItems];
-                                  updated[index].quantity = parseFloat(e.target.value) || 0;
-                                  setLineItems(updated);
-                                  setHasChanges(true);
-                                }}
-                                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded"
-                              />
-                            </div>
-                            <div>
-                              <label className="text-xs text-slate-500">Montant</label>
-                              <input
-                                type="number"
-                                step="0.01"
-                                value={item.amount}
-                                onChange={(e) => {
-                                  const updated = [...lineItems];
-                                  updated[index].amount = parseFloat(e.target.value) || 0;
-                                  setLineItems(updated);
-                                  setHasChanges(true);
-                                }}
-                                className="w-full px-2 py-1.5 text-sm border border-slate-200 rounded"
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0, amount: 0 }])}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Ajouter une ligne
-                    </Button>
-                  </>
-                )}
-              </div>
-            )}
-
-            {activeTab === 'exportations' && (
-              <div className="text-center py-12 text-slate-500">
-                <Download className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>Aucune exportation pour ce document</p>
-                <p className="text-sm mt-2">Les exportations comptables apparaîtront ici</p>
-              </div>
-            )}
-
-            {activeTab === 'doublons' && (
-              <div className="text-center py-12 text-slate-500">
-                <CheckCircle2 className="w-12 h-12 mx-auto mb-4 text-emerald-400" />
-                <p>Aucun doublon détecté</p>
-                <p className="text-sm mt-2">Ce document est unique dans votre base</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Panel droit - Aperçu document */}
-        <div className="w-1/2 bg-slate-800 flex flex-col">
-          {/* Toolbar aperçu */}
-          <div className="flex items-center justify-between px-4 py-2 bg-slate-700 text-white">
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage <= 1}
-                className="p-1.5 hover:bg-slate-600 rounded disabled:opacity-50"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="text-sm">{currentPage} sur {totalPages}</span>
-              <button 
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage >= totalPages}
-                className="p-1.5 hover:bg-slate-600 rounded disabled:opacity-50"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            
-            <div className="flex items-center gap-1">
-              <button 
-                onClick={() => setZoom(Math.max(25, zoom - 25))}
-                className="p-1.5 hover:bg-slate-600 rounded"
-              >
-                <ZoomOut className="w-4 h-4" />
-              </button>
-              <select 
-                value={zoom} 
-                onChange={(e) => setZoom(parseInt(e.target.value))}
-                className="bg-slate-600 text-white text-sm px-2 py-1 rounded"
-              >
-                <option value={50}>50%</option>
-                <option value={75}>75%</option>
-                <option value={100}>100%</option>
-                <option value={125}>125%</option>
-                <option value={150}>150%</option>
-                <option value={200}>200%</option>
-              </select>
-              <button 
-                onClick={() => setZoom(Math.min(200, zoom + 25))}
-                className="p-1.5 hover:bg-slate-600 rounded"
-              >
-                <ZoomIn className="w-4 h-4" />
-              </button>
-              <div className="w-px h-4 bg-slate-500 mx-1" />
-              <button 
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="p-1.5 hover:bg-slate-600 rounded"
-              >
-                {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
-              </button>
             </div>
           </div>
 
-          {/* Montant flottant */}
-          <div className="absolute top-20 right-8 bg-white rounded-xl shadow-2xl p-6 z-10 min-w-[200px]">
-            <div className="text-3xl font-bold text-slate-900">
-              ${formData.amount.toFixed(2)}
+          {/* === LIGNES DU DOCUMENT === */}
+          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              <div className="flex items-center gap-3">
+                <ShoppingCart className="w-5 h-5 text-slate-400" />
+                <h3 className="text-lg font-semibold text-slate-800">Lignes du document</h3>
+                <span className="bg-slate-100 text-slate-600 text-sm px-2 py-0.5 rounded-full">
+                  {lineItems.length} ligne{lineItems.length > 1 ? 's' : ''}
+                </span>
+              </div>
+              <Button variant="outline" size="sm" onClick={addLine}>
+                <Plus className="w-4 h-4 mr-1" />
+                Ajouter une ligne
+              </Button>
             </div>
-            <div className="text-sm text-slate-500 mt-1">
-              Payé {formData.date ? formatDateShort(formData.date) : 'N/A'}
-            </div>
-            <div className="flex gap-4 mt-4 text-sm">
-              <button className="text-slate-600 hover:text-emerald-600 flex items-center gap-1">
-                <Download className="w-4 h-4" />
-                Télécharger la facture
-              </button>
-            </div>
-          </div>
 
-          {/* Aperçu */}
-          <div className="flex-1 overflow-auto flex items-center justify-center p-4">
-            {document.fileUrl ? (
-              <div 
-                style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
-                className="transition-transform"
-              >
-                {isPDF ? (
-                  <iframe 
-                    src={document.fileUrl} 
-                    className="bg-white rounded shadow-lg"
-                    style={{ width: '600px', height: '800px' }}
-                    title={document.filename}
-                  />
-                ) : isImage ? (
-                  <img 
-                    src={document.fileUrl} 
-                    alt={document.filename}
-                    className="max-w-full rounded shadow-lg bg-white"
-                  />
-                ) : (
-                  <div className="text-white text-center">
-                    <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                    <p>Aperçu non disponible</p>
-                  </div>
-                )}
+            {lineItems.length === 0 ? (
+              <div className="p-12 text-center">
+                <Package className="w-16 h-16 mx-auto mb-4 text-slate-300" />
+                <h4 className="text-lg font-medium text-slate-700 mb-2">Aucune ligne ajoutée</h4>
+                <p className="text-slate-500 mb-6">Ajoutez les produits/services de cette facture</p>
+                <Button onClick={addLine}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Ajouter une ligne
+                </Button>
               </div>
             ) : (
-              <div className="text-white text-center">
-                <FileText className="w-16 h-16 mx-auto mb-4 opacity-50" />
-                <p>Aucun fichier disponible</p>
-              </div>
+              <>
+                {/* Header table */}
+                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                  <div className="col-span-1">#</div>
+                  <div className="col-span-5">Description</div>
+                  <div className="col-span-1 text-center">Qté</div>
+                  <div className="col-span-2 text-right">Prix unit. HT</div>
+                  <div className="col-span-1 text-center">TVA</div>
+                  <div className="col-span-2 text-right">Total HT</div>
+                </div>
+
+                {/* Rows */}
+                <div className="divide-y divide-slate-100">
+                  {lineItems.map((item, index) => (
+                    <div key={index} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors group">
+                      <div className="col-span-1">
+                        <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 text-sm flex items-center justify-center">
+                          {index + 1}
+                        </span>
+                      </div>
+                      <div className="col-span-5">
+                        <input
+                          type="text"
+                          value={item.description}
+                          onChange={(e) => handleLineChange(index, 'description', e.target.value)}
+                          placeholder="Description"
+                          className="w-full px-3 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg bg-transparent focus:bg-white transition-colors"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <input
+                          type="number"
+                          value={item.quantity}
+                          onChange={(e) => handleLineChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                          className="w-full px-2 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg text-center bg-transparent focus:bg-white transition-colors"
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={item.unitPrice}
+                          onChange={(e) => handleLineChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                          className="w-full px-2 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg text-right bg-transparent focus:bg-white transition-colors"
+                        />
+                      </div>
+                      <div className="col-span-1">
+                        <select
+                          value={item.vatRate || 20}
+                          onChange={(e) => handleLineChange(index, 'vatRate', parseFloat(e.target.value))}
+                          className="w-full px-1 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg text-center bg-transparent focus:bg-white transition-colors text-sm"
+                        >
+                          <option value={0}>0%</option>
+                          <option value={5.5}>5.5%</option>
+                          <option value={10}>10%</option>
+                          <option value={20}>20%</option>
+                        </select>
+                      </div>
+                      <div className="col-span-2 flex items-center justify-end gap-2">
+                        <span className="font-semibold text-slate-900">
+                          {item.amount.toFixed(2)} {currencySymbol}
+                        </span>
+                        <button
+                          onClick={() => removeLine(index)}
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Totaux */}
+                <div className="bg-slate-50 px-6 py-4 border-t border-slate-200">
+                  <div className="max-w-xs ml-auto space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">Sous-total HT</span>
+                      <span className="font-medium text-slate-700">{totalHT.toFixed(2)} {currencySymbol}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-slate-500">TVA</span>
+                      <span className="font-medium text-slate-700">{(totalTTC - totalHT).toFixed(2)} {currencySymbol}</span>
+                    </div>
+                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-slate-200">
+                      <span className="text-slate-900">Total TTC</span>
+                      <span className="text-emerald-600">{totalTTC.toFixed(2)} {currencySymbol}</span>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
-// Composants utilitaires
-function TabButton({ 
-  children, 
-  active, 
-  onClick, 
-  badge 
-}: { 
-  children: React.ReactNode; 
-  active: boolean; 
-  onClick: () => void;
-  badge?: number;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-        active 
-          ? 'border-emerald-500 text-emerald-600' 
-          : 'border-transparent text-slate-500 hover:text-slate-700'
-      }`}
-    >
-      {children}
-      {badge !== undefined && badge > 0 && (
-        <span className="bg-emerald-100 text-emerald-700 text-xs px-2 py-0.5 rounded-full">
-          {badge}
-        </span>
-      )}
-    </button>
-  );
-}
-
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-4">
-      <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wider">{title}</h3>
-      {children}
-    </div>
-  );
-}
-
-function FormField({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-1.5">
-      <label className="block text-sm text-slate-600">{label}</label>
-      {children}
-    </div>
-  );
-}
-
-function DocumentViewer({ 
-  url, 
-  isPDF, 
-  isImage, 
-  filename,
-  zoom,
-  onZoomChange 
-}: { 
-  url: string; 
-  isPDF: boolean; 
-  isImage: boolean; 
-  filename: string;
-  zoom: number;
-  onZoomChange: (zoom: number) => void;
-}) {
-  return (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex-1 overflow-auto flex items-center justify-center p-4">
-        <div style={{ transform: `scale(${zoom / 100})` }} className="transition-transform">
-          {isPDF ? (
-            <iframe 
-              src={url} 
-              className="bg-white rounded shadow-lg"
-              style={{ width: '500px', height: '700px' }}
-              title={filename}
-            />
-          ) : isImage ? (
-            <img 
-              src={url} 
-              alt={filename}
-              className="max-w-full rounded shadow-lg"
-            />
-          ) : (
-            <div className="text-slate-400 text-center">
-              <FileText className="w-16 h-16 mx-auto mb-4" />
-              <p>Aperçu non disponible</p>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -378,59 +378,58 @@ export default function DashboardPage() {
                 </Card>
 
                 {/* Documents Grid */}
+                {/* Document ouvert en plein écran */}
+                {selectedDocument && (
+                  <DocumentDetail 
+                    document={selectedDocument} 
+                    onClose={() => setSelectedDocument(null)}
+                    onAnalyzed={() => {
+                      setRefreshKey(p => p + 1);
+                      fetchDocuments();
+                    }}
+                    onDelete={async () => {
+                      if (confirm('Supprimer ce document ?')) {
+                        await fetch(`/api/documents/${selectedDocument.id}`, { method: 'DELETE' });
+                        setSelectedDocument(null);
+                        fetchDocuments();
+                      }
+                    }}
+                  />
+                )}
+
+                {/* Liste des documents */}
                 {documents.length === 0 ? (
                   <Card padding="lg" className="text-center py-16">
                     <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
                       <FileText className="w-8 h-8 text-slate-400" />
                     </div>
                     <h3 className="text-lg font-semibold text-slate-900 mb-2">Aucun document</h3>
-                    <p className="text-slate-500 mb-6">Commencez par importer vos factures pour activer l'IA.</p>
+                    <p className="text-slate-500 mb-6">Commencez par importer vos factures.</p>
                     <div className="flex gap-3 justify-center">
                       <Button onClick={() => setActiveTab('upload')} variant="outline">
                         Importer manuellement
                       </Button>
-                      <Button onClick={() => setActiveTab('gmail')}>
-                        Connecter Gmail
+                      <Button onClick={() => setActiveTab('connectors')}>
+                        Connecter Email
                       </Button>
                     </div>
                   </Card>
                 ) : (
-                  <div className="grid lg:grid-cols-2 gap-6 min-h-[calc(100vh-250px)]">
-                    {/* List */}
-                    <div className="overflow-y-auto space-y-3 custom-scrollbar">
-                      {documents
-                        .filter(doc => {
-                          const matchesSearch = (doc.filename + doc.supplier).toLowerCase().includes(searchTerm.toLowerCase());
-                          const matchesType = selectedType === 'ALL' || doc.docType === selectedType;
-                          return matchesSearch && matchesType;
-                        })
-                        .map((doc) => (
-                          <DocumentCard
-                            key={doc.id}
-                            document={doc}
-                            onClick={() => setSelectedDocument(doc)}
-                            selected={selectedDocument?.id === doc.id}
-                          />
-                        ))}
-                    </div>
-
-                    {/* Detail Preview */}
-                    <Card padding="lg" className="hidden lg:block sticky top-32 h-fit">
-                      {selectedDocument ? (
-                        <DocumentDetail 
-                          document={selectedDocument} 
-                          onAnalyzed={() => {
-                            setRefreshKey(p => p + 1);
-                            fetchDocuments();
-                          }}
+                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {documents
+                      .filter(doc => {
+                        const matchesSearch = (doc.filename + doc.supplier).toLowerCase().includes(searchTerm.toLowerCase());
+                        const matchesType = selectedType === 'ALL' || doc.docType === selectedType;
+                        return matchesSearch && matchesType;
+                      })
+                      .map((doc) => (
+                        <DocumentCard
+                          key={doc.id}
+                          document={doc}
+                          onClick={() => setSelectedDocument(doc)}
+                          selected={false}
                         />
-                      ) : (
-                        <div className="h-80 flex flex-col items-center justify-center text-slate-400">
-                          <Search className="w-12 h-12 mb-4 opacity-50" />
-                          <p>Sélectionnez un document pour voir les détails</p>
-                        </div>
-                      )}
-                    </Card>
+                      ))}
                   </div>
                 )}
               </div>
