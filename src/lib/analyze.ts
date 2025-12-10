@@ -117,17 +117,51 @@ AUTRES RÈGLES:
 5. Catégorie LOGICIEL/SERVICES pour les outils SaaS (Replicate, AWS, etc.)`;
 
 /**
- * Lit un PDF et retourne son contenu en Buffer
- * Compatible Vercel (serverless)
+ * Extrait le texte d'un PDF
+ * Compatible Vercel (serverless) avec polyfill DOMMatrix via canvas
  */
-async function readPDFBuffer(source: string | Buffer): Promise<Buffer> {
-  if (typeof source === 'string') {
-    console.log('📖 [PDF] Lecture du fichier PDF:', source);
-    const { readFile } = await import('fs/promises');
-    return await readFile(source);
-  } else {
-    console.log('📖 [PDF] Traitement du PDF depuis Buffer');
-    return source;
+async function extractPDFText(source: string | Buffer): Promise<string> {
+  try {
+    // Polyfill DOMMatrix pour environnements serverless (Vercel)
+    // Le package 'canvas' fournit DOMMatrix
+    try {
+      const canvas = require('canvas');
+      if (typeof globalThis.DOMMatrix === 'undefined' && canvas.DOMMatrix) {
+        (globalThis as any).DOMMatrix = canvas.DOMMatrix;
+        console.log('✅ [PDF] DOMMatrix polyfill installé via canvas');
+      }
+    } catch (e) {
+      console.log('⚠️ [PDF] Canvas non disponible, tentative sans polyfill');
+    }
+
+    let data: Buffer;
+    
+    if (typeof source === 'string') {
+      console.log('📖 [PDF] Lecture du fichier PDF:', source);
+      const { readFile } = await import('fs/promises');
+      data = await readFile(source);
+    } else {
+      console.log('📖 [PDF] Traitement du PDF depuis Buffer');
+      data = source;
+    }
+    
+    console.log('✅ [PDF] Données lues, taille:', data.length, 'bytes');
+    
+    // Utiliser pdf-parse pour extraire le texte
+    console.log('🔧 [PDF] Extraction du texte avec pdf-parse...');
+    const pdfParse = require('pdf-parse') as (buffer: Buffer, options?: any) => Promise<{ text: string; numpages: number }>;
+    
+    const pdfData = await pdfParse(data, {
+      max: 5, // Maximum 5 pages
+    });
+    
+    console.log(`📄 [PDF] PDF contient ${pdfData.numpages} page(s)`);
+    console.log('✅ [PDF] Extraction terminée, longueur:', pdfData.text.length);
+    
+    return pdfData.text.trim();
+  } catch (error) {
+    console.error('❌ [PDF] Erreur extraction PDF:', error);
+    throw new Error(`Impossible d'extraire le PDF: ${error}`);
   }
 }
 
@@ -179,32 +213,34 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
     let analysisResult;
 
     if (isPDF) {
-      // === ANALYSE PDF : Envoyer directement en base64 à GPT-4o ===
-      console.log('📕 [ANALYZE] Mode PDF : envoi direct à GPT-4o Vision');
+      // === ANALYSE PDF : Extraire le texte puis analyser avec GPT-4 ===
+      console.log('📕 [ANALYZE] Mode PDF : extraction texte + GPT-4');
       
-      let pdfBuffer: Buffer;
+      let pdfText = '';
       
       if (document.fileUrl.startsWith('/uploads/')) {
         const filepath = path.join(process.cwd(), 'public', document.fileUrl);
         console.log('📁 [ANALYZE] Chemin fichier:', filepath);
-        pdfBuffer = await readPDFBuffer(filepath);
+        pdfText = await extractPDFText(filepath);
       } else if (document.fileUrl.startsWith('data:')) {
         console.log('📁 [ANALYZE] PDF en base64...');
         const base64Data = document.fileUrl.split(',')[1];
-        pdfBuffer = Buffer.from(base64Data, 'base64');
+        const buffer = Buffer.from(base64Data, 'base64');
+        pdfText = await extractPDFText(buffer);
       } else {
         return { success: false, error: 'Format de fichier PDF non supporté' };
       }
 
-      console.log('✅ [ANALYZE] PDF lu, taille:', pdfBuffer.length, 'bytes');
+      if (!pdfText || pdfText.length < 10) {
+        console.error('❌ [ANALYZE] Texte PDF trop court ou vide');
+        return { success: false, error: 'Impossible d\'extraire le texte du PDF' };
+      }
 
-      // Convertir en base64 pour GPT-4o
-      const pdfBase64 = pdfBuffer.toString('base64');
-      const pdfDataUrl = `data:application/pdf;base64,${pdfBase64}`;
+      console.log('✅ [ANALYZE] Texte extrait, longueur:', pdfText.length);
+      console.log('📝 [ANALYZE] Aperçu (500 chars):', pdfText.substring(0, 500));
 
-      // GPT-4o peut analyser les PDFs via l'API files ou en base64
-      // On utilise le mode "image_url" qui accepte aussi les PDFs
-      console.log('🤖 [ANALYZE] Envoi du PDF à GPT-4o...');
+      // Analyser avec GPT-4
+      console.log('🤖 [ANALYZE] Envoi du texte à GPT-4...');
       const completion = await openai.chat.completions.create({
         model: 'gpt-4o',
         messages: [
@@ -214,19 +250,7 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
           },
           {
             role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: 'Analyse ce document PDF (facture/reçu) et extrais TOUTES les informations, SURTOUT chaque ligne de produit/service avec les prix :',
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: pdfDataUrl,
-                  detail: 'high',
-                },
-              },
-            ],
+            content: `Voici le texte extrait d'une facture. Analyse-le et extrais TOUTES les informations, SURTOUT les lignes de produits/services :\n\n${pdfText}`,
           },
         ],
         max_tokens: 3000,
@@ -235,7 +259,7 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
 
       const responseText = completion.choices[0]?.message?.content || '';
       console.log('✅ [ANALYZE] Réponse GPT reçue, longueur:', responseText.length);
-      console.log('📝 [ANALYZE] Aperçu réponse (500 premiers chars):', responseText.substring(0, 500));
+      console.log('📝 [ANALYZE] Aperçu réponse (500 chars):', responseText.substring(0, 500));
       
       const cleanJson = responseText
         .replace(/```json\n?/g, '')
