@@ -117,21 +117,20 @@ AUTRES RÈGLES:
 5. Catégorie LOGICIEL/SERVICES pour les outils SaaS (Replicate, AWS, etc.)`;
 
 /**
- * Extrait le texte d'un PDF
- * Compatible Vercel (serverless) avec polyfill DOMMatrix via canvas
+ * Extrait le texte d'un PDF avec pdfjs-dist
+ * Compatible Vercel (serverless) avec polyfill via canvas
  */
 async function extractPDFText(source: string | Buffer): Promise<string> {
   try {
-    // Polyfill DOMMatrix pour environnements serverless (Vercel)
-    // Le package 'canvas' fournit DOMMatrix
-    try {
-      const canvas = require('canvas');
-      if (typeof globalThis.DOMMatrix === 'undefined' && canvas.DOMMatrix) {
-        (globalThis as any).DOMMatrix = canvas.DOMMatrix;
-        console.log('✅ [PDF] DOMMatrix polyfill installé via canvas');
+    // Polyfill pour environnements serverless (Vercel)
+    if (typeof globalThis.DOMMatrix === 'undefined') {
+      try {
+        const { DOMMatrix } = require('canvas');
+        (globalThis as any).DOMMatrix = DOMMatrix;
+        console.log('✅ [PDF] DOMMatrix polyfill installé');
+      } catch (e) {
+        console.log('⚠️ [PDF] Canvas non disponible');
       }
-    } catch (e) {
-      console.log('⚠️ [PDF] Canvas non disponible, tentative sans polyfill');
     }
 
     let data: Buffer;
@@ -147,18 +146,37 @@ async function extractPDFText(source: string | Buffer): Promise<string> {
     
     console.log('✅ [PDF] Données lues, taille:', data.length, 'bytes');
     
-    // Utiliser pdf-parse pour extraire le texte
-    console.log('🔧 [PDF] Extraction du texte avec pdf-parse...');
-    const pdfParse = require('pdf-parse') as (buffer: Buffer, options?: any) => Promise<{ text: string; numpages: number }>;
+    // Utiliser pdfjs-dist directement
+    console.log('🔧 [PDF] Extraction du texte avec pdfjs-dist...');
+    const pdfjsLib = require('pdfjs-dist/legacy/build/pdf.js');
     
-    const pdfData = await pdfParse(data, {
-      max: 5, // Maximum 5 pages
+    // Désactiver le worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+    
+    const loadingTask = pdfjsLib.getDocument({
+      data: new Uint8Array(data),
+      useSystemFonts: true,
+      standardFontDataUrl: undefined,
     });
     
-    console.log(`📄 [PDF] PDF contient ${pdfData.numpages} page(s)`);
-    console.log('✅ [PDF] Extraction terminée, longueur:', pdfData.text.length);
+    const pdfDoc = await loadingTask.promise;
+    const numPages = pdfDoc.numPages;
+    console.log(`📄 [PDF] PDF contient ${numPages} page(s)`);
     
-    return pdfData.text.trim();
+    let fullText = '';
+    const maxPages = Math.min(numPages, 5);
+    
+    for (let i = 1; i <= maxPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+      fullText += pageText + '\n';
+    }
+    
+    console.log('✅ [PDF] Extraction terminée, longueur:', fullText.length);
+    return fullText.trim();
   } catch (error) {
     console.error('❌ [PDF] Erreur extraction PDF:', error);
     throw new Error(`Impossible d'extraire le PDF: ${error}`);
