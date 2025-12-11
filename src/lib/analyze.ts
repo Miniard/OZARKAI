@@ -117,13 +117,13 @@ AUTRES RÈGLES:
 5. Catégorie LOGICIEL/SERVICES pour les outils SaaS (Replicate, AWS, etc.)`;
 
 /**
- * Extrait le texte d'un PDF avec pdf-parse
- * Compatible Vercel (serverless) - pas de worker nécessaire
+ * Extrait le texte d'un PDF avec unpdf
+ * Compatible Vercel (serverless) - conçu pour edge/serverless
  */
 async function extractPDFText(source: string | Buffer): Promise<string> {
   try {
-    // Importer pdf-parse avec require (compatible CommonJS et serverless)
-    const pdfParse = require('pdf-parse');
+    // Importer unpdf (compatible serverless, pas de worker)
+    const { extractText } = await import('unpdf');
     
     let data: Buffer;
     
@@ -138,18 +138,15 @@ async function extractPDFText(source: string | Buffer): Promise<string> {
     
     console.log('✅ [PDF] Données lues, taille:', data.length, 'bytes');
     
-    // Utiliser pdf-parse (pas de worker, compatible serverless)
-    console.log('🔧 [PDF] Extraction du texte avec pdf-parse...');
+    // Utiliser unpdf (conçu pour serverless, pas de DOMMatrix requis)
+    console.log('🔧 [PDF] Extraction du texte avec unpdf...');
     
-    const pdfData = await pdfParse(data, {
-      // Limiter à 5 pages max pour éviter les timeouts
-      max: 5,
-    });
+    const { text, totalPages } = await extractText(data, { mergePages: true });
     
-    console.log(`📄 [PDF] PDF contient ${pdfData.numpages} page(s)`);
-    console.log('✅ [PDF] Extraction terminée, longueur:', pdfData.text.length);
+    console.log(`📄 [PDF] PDF contient ${totalPages} page(s)`);
+    console.log('✅ [PDF] Extraction terminée, longueur:', text.length);
     
-    return pdfData.text.trim();
+    return text.trim();
   } catch (error) {
     console.error('❌ [PDF] Erreur extraction PDF:', error);
     throw new Error(`Impossible d'extraire le PDF: ${error}`);
