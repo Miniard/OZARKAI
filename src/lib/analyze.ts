@@ -141,7 +141,9 @@ async function extractPDFText(source: string | Buffer): Promise<string> {
     // Utiliser unpdf (conçu pour serverless, pas de DOMMatrix requis)
     console.log('🔧 [PDF] Extraction du texte avec unpdf...');
     
-    const { text, totalPages } = await extractText(data, { mergePages: true });
+    // Convertir Buffer en Uint8Array (requis par unpdf)
+    const uint8Array = new Uint8Array(data);
+    const { text, totalPages } = await extractText(uint8Array, { mergePages: true });
     
     console.log(`📄 [PDF] PDF contient ${totalPages} page(s)`);
     console.log('✅ [PDF] Extraction terminée, longueur:', text.length);
