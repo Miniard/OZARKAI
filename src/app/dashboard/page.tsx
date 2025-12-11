@@ -1,5 +1,5 @@
 /**
- * Dashboard Page - Design Style Receptor AI
+ * Dashboard Page - Design Pro Style
  */
 
 'use client';
@@ -34,13 +34,13 @@ import {
   Shield,
   CreditCard,
   HelpCircle,
-  RefreshCcw,
   ChevronDown,
-  Eye
+  SlidersHorizontal,
+  RefreshCw
 } from 'lucide-react';
 
 // Types pour les filtres
-type DocumentFilter = 'all' | 'to_export' | 'exported' | 'to_review' | 'last_extracted';
+type DocumentFilter = 'all' | 'to_export' | 'exported' | 'to_review' | 'recent';
 type ViewMode = 'grid' | 'list';
 
 export default function DashboardPage() {
@@ -132,10 +132,10 @@ export default function DashboardPage() {
     to_export: documents.filter(d => !d.exported).length,
     exported: documents.filter(d => d.exported).length,
     to_review: documents.filter(d => !d.analyzed).length,
-    last_extracted: documents.filter(d => {
+    recent: documents.filter(d => {
       const date = new Date(d.createdAt);
       const now = new Date();
-      return (now.getTime() - date.getTime()) < 24 * 60 * 60 * 1000;
+      return (now.getTime() - date.getTime()) < 7 * 24 * 60 * 60 * 1000; // 7 jours
     }).length,
   };
 
@@ -145,7 +145,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-          <p className="text-slate-500 animate-pulse">Loading...</p>
+          <p className="text-slate-500 animate-pulse">Chargement...</p>
         </div>
       </div>
     );
@@ -155,30 +155,27 @@ export default function DashboardPage() {
 
   // Page titles
   const pageTitles: Record<string, { title: string; subtitle: string }> = {
-    dashboard: { title: 'Dashboard', subtitle: 'Overview of your activity' },
-    upload: { title: 'Quick Upload', subtitle: 'Drag and drop your invoices' },
-    connectors: { title: 'Email Accounts', subtitle: 'Connect your email to auto-import' },
-    extraction: { title: 'Retroactive Extraction', subtitle: 'Extract invoices by date range' },
-    documents: { title: 'Accounting documents', subtitle: 'All receipts and invoices (paid and unpaid) ready for reconciliation' },
-    teams: { title: 'Integrations', subtitle: 'Connect your tools' },
-    settings: { title: 'Settings', subtitle: 'Manage your preferences' },
-    billing: { title: 'Exports History', subtitle: 'View your export history' },
-    help: { title: 'Help & Support', subtitle: 'Get help' },
-    analytics: { title: 'Analytics', subtitle: 'Track your financial metrics' },
-    bills: { title: 'Bills to Pay', subtitle: 'Upcoming payments' },
-    recurring: { title: 'Recurring', subtitle: 'Recurring invoices' },
-    vendors: { title: 'Vendors', subtitle: 'Manage your vendors' },
+    dashboard: { title: 'Tableau de bord', subtitle: 'Vue d\'ensemble de votre activité' },
+    upload: { title: 'Importer', subtitle: 'Glissez-déposez vos factures' },
+    connectors: { title: 'Email', subtitle: 'Connectez vos boîtes mail' },
+    extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures par plage de dates' },
+    documents: { title: 'Documents comptables', subtitle: 'Toutes vos factures et reçus prêts pour la réconciliation' },
+    teams: { title: 'Équipes', subtitle: 'Collaborez avec vos collègues' },
+    settings: { title: 'Paramètres', subtitle: 'Gérez votre compte' },
+    billing: { title: 'Facturation', subtitle: 'Gérez votre abonnement' },
+    help: { title: 'Aide', subtitle: 'Obtenez de l\'aide' },
+    security: { title: 'Sécurité', subtitle: 'Gérez la sécurité de votre compte' },
   };
 
   const currentPage = pageTitles[activeTab] || { title: '', subtitle: '' };
 
   // Filter tabs config
-  const filterTabs: { id: DocumentFilter; label: string; icon?: any }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'to_export', label: 'To Export' },
-    { id: 'exported', label: 'Exported' },
-    { id: 'to_review', label: 'To Review' },
-    { id: 'last_extracted', label: 'Last Extracted' },
+  const filterTabs: { id: DocumentFilter; label: string }[] = [
+    { id: 'all', label: 'Tous' },
+    { id: 'to_export', label: 'À exporter' },
+    { id: 'exported', label: 'Exportés' },
+    { id: 'to_review', label: 'À vérifier' },
+    { id: 'recent', label: 'Récents' },
   ];
 
   return (
@@ -193,7 +190,7 @@ export default function DashboardPage() {
             fetchDocuments();
           }}
           onDelete={async () => {
-            if (confirm('Delete this document?')) {
+            if (confirm('Supprimer ce document ?')) {
               await fetch(`/api/documents/${selectedDocument.id}`, { method: 'DELETE' });
               setSelectedDocument(null);
               fetchDocuments();
@@ -214,122 +211,118 @@ export default function DashboardPage() {
       />
 
       {/* Main Content Area */}
-      <div className="ml-64 transition-all duration-300">
-        {/* Top Banner - Subscription Warning (like Receptor) */}
-        <div className="bg-rose-500 text-white px-6 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-sm">
-            <span className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-xs">!</span>
-            <span>
-              You don&apos;t have an active subscription. You can run{' '}
-              <button onClick={() => setActiveTab('extraction')} className="underline font-medium">
-                Retroactive Extractions
-              </button>
-              , but you&apos;ll need to subscribe to monitor email accounts or upload documents.
-            </span>
-          </div>
-          <button className="px-4 py-1.5 bg-white text-rose-600 rounded-lg text-sm font-medium hover:bg-rose-50 transition-colors">
-            Start free trial
-          </button>
-        </div>
+      <div className="ml-20 lg:ml-72 transition-all duration-300">
+        {/* Page Header - Style Pro */}
+        <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
+          <div className="px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-xl font-semibold text-slate-900">{currentPage.title}</h1>
+                <p className="text-sm text-slate-500 mt-0.5">{currentPage.subtitle}</p>
+              </div>
 
-        {/* Page Header */}
-        <header className="bg-white border-b border-slate-200 px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-semibold text-slate-900">{currentPage.title}</h1>
-              <p className="text-sm text-slate-500 mt-0.5">{currentPage.subtitle}</p>
+              {/* Actions Header */}
+              <div className="flex items-center gap-3">
+                {activeTab === 'documents' && (
+                  <Button 
+                    leftIcon={<Download className="w-4 h-4" />}
+                    className="bg-primary-500 hover:bg-primary-600"
+                  >
+                    Exporter tout
+                    <ChevronDown className="w-4 h-4 ml-1" />
+                  </Button>
+                )}
+                {activeTab === 'dashboard' && (
+                  <Button 
+                    variant="outline"
+                    leftIcon={<RefreshCw className="w-4 h-4" />}
+                    onClick={() => setRefreshKey(p => p + 1)}
+                  >
+                    Actualiser
+                  </Button>
+                )}
+              </div>
             </div>
 
-            {/* Export Button (only on documents view) */}
+            {/* Filter Bar - Style Receptor (only on documents view) */}
             {activeTab === 'documents' && (
-              <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors">
-                <Download className="w-4 h-4" />
-                Export All
-                <ChevronDown className="w-4 h-4 ml-1" />
-              </button>
+              <div className="mt-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                {/* Filter Tabs */}
+                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+                  {filterTabs.map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveFilter(tab.id)}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all
+                        ${activeFilter === tab.id
+                          ? 'bg-white text-slate-900 shadow-sm'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                        }`}
+                    >
+                      {tab.label}
+                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium
+                        ${activeFilter === tab.id
+                          ? 'bg-primary-100 text-primary-700'
+                          : 'bg-slate-200 text-slate-500'
+                        }`}>
+                        {filterCounts[tab.id]}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Right Controls */}
+                <div className="flex items-center gap-2">
+                  {/* Search */}
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                      type="text"
+                      placeholder="Rechercher..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-48 lg:w-64 bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm 
+                               focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 
+                               placeholder:text-slate-400 transition-all"
+                    />
+                  </div>
+
+                  {/* Filters Button */}
+                  <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors bg-white">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    <span className="hidden sm:inline">Filtres</span>
+                  </button>
+
+                  {/* View Mode Toggle */}
+                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
+                    <button 
+                      onClick={() => setViewMode('grid')}
+                      className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-slate-100 text-primary-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                      title="Vue grille"
+                    >
+                      <LayoutGrid className="w-4 h-4" />
+                    </button>
+                    <button 
+                      onClick={() => setViewMode('list')}
+                      className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-slate-100 text-primary-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
+                      title="Vue liste"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Add Button */}
+                  <Button onClick={() => setActiveTab('upload')} size="sm" leftIcon={<Plus className="w-4 h-4" />}>
+                    Nouveau
+                  </Button>
+                </div>
+              </div>
             )}
           </div>
-
-          {/* Filter Tabs (only on documents view) */}
-          {activeTab === 'documents' && (
-            <div className="mt-6 flex items-center justify-between">
-              {/* Tabs */}
-              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
-                {filterTabs.map((tab) => (
-                  <button
-                    key={tab.id}
-                    onClick={() => setActiveFilter(tab.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all
-                      ${activeFilter === tab.id
-                        ? 'bg-white text-slate-900 shadow-sm'
-                        : 'text-slate-600 hover:text-slate-900'
-                      }`}
-                  >
-                    {tab.label}
-                    <span className={`px-1.5 py-0.5 rounded text-xs
-                      ${activeFilter === tab.id
-                        ? 'bg-slate-100 text-slate-700'
-                        : 'bg-slate-200/50 text-slate-500'
-                      }`}>
-                      {filterCounts[tab.id]}
-                    </span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Right Controls */}
-              <div className="flex items-center gap-3">
-                {/* Search */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                  <input 
-                    type="text"
-                    placeholder="Search"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-48 bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm 
-                             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 
-                             placeholder:text-slate-400 transition-all"
-                  />
-                </div>
-
-                {/* View Buttons */}
-                <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-                  <Eye className="w-4 h-4" />
-                  Load View
-                </button>
-
-                <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-                  <Filter className="w-4 h-4" />
-                  Filters
-                </button>
-
-                <button className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
-                  Actions
-                </button>
-
-                {/* View Mode Toggle */}
-                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
-                  <button 
-                    onClick={() => setViewMode('grid')}
-                    className={`p-2 ${viewMode === 'grid' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => setViewMode('list')}
-                    className={`p-2 ${viewMode === 'list' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
         </header>
 
         {/* Main Content */}
-        <main className="p-6">
+        <main className="p-6 lg:p-8">
           <div className="max-w-7xl mx-auto animate-in">
             
             {/* LOADING STATE */}
@@ -337,7 +330,7 @@ export default function DashboardPage() {
               <div className="flex flex-col items-center justify-center min-h-[60vh]">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-                  <p className="text-slate-500">Loading...</p>
+                  <p className="text-slate-500">Chargement...</p>
                 </div>
               </div>
             )}
@@ -350,10 +343,18 @@ export default function DashboardPage() {
                     <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Building2 className="w-8 h-8 text-primary-600" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Welcome to Komptal!</h3>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Bienvenue sur Komptal !</h3>
                     <p className="text-slate-600 mb-6">
-                      Get started by connecting your first email account or uploading documents.
+                      Commencez par connecter votre email ou importer des documents.
                     </p>
+                    <div className="flex gap-3 justify-center">
+                      <Button variant="outline" onClick={() => setActiveTab('connectors')}>
+                        Connecter Email
+                      </Button>
+                      <Button onClick={() => setActiveTab('upload')}>
+                        Importer
+                      </Button>
+                    </div>
                   </Card>
                 )}
 
@@ -377,22 +378,22 @@ export default function DashboardPage() {
                   return (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                       <StatCard 
-                        title="Revenue" 
-                        value={`€${revenus.toLocaleString('fr-FR')}`}
+                        title="Revenus du mois" 
+                        value={`${revenus.toLocaleString('fr-FR')} €`}
                         icon={<TrendingUp className="w-6 h-6" />}
-                        iconColor="text-primary-500"
+                        iconColor="text-success-500"
                       />
                       <StatCard 
-                        title="Expenses" 
-                        value={`€${depenses.toLocaleString('fr-FR')}`}
+                        title="Dépenses" 
+                        value={`${depenses.toLocaleString('fr-FR')} €`}
                         icon={<TrendingDown className="w-6 h-6" />}
-                        iconColor="text-rose-500"
+                        iconColor="text-danger-500"
                       />
                       <StatCard 
-                        title="VAT Collected" 
-                        value={`€${tva.toLocaleString('fr-FR')}`}
+                        title="TVA collectée" 
+                        value={`${tva.toLocaleString('fr-FR')} €`}
                         icon={<Receipt className="w-6 h-6" />}
-                        iconColor="text-amber-500"
+                        iconColor="text-warning-500"
                       />
                       <StatCard 
                         title="Documents" 
@@ -449,23 +450,24 @@ export default function DashboardPage() {
             {activeTab === 'documents' && loadingState === 'ready' && (
               <div className="space-y-6">
                 {documents.length === 0 ? (
-                  /* Empty State - Style Receptor */
-                  <div className="bg-white rounded-xl border border-slate-200 border-dashed">
+                  /* Empty State Pro */
+                  <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200">
                     <div className="flex flex-col items-center justify-center py-20">
                       <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                         <Search className="w-8 h-8 text-slate-400" />
                       </div>
-                      <h3 className="text-lg font-semibold text-slate-900 mb-2">No documents found</h3>
-                      <p className="text-slate-500 text-center mb-6">
-                        Start by extracting documents<br />
-                        from your inbox, chats, or uploads.
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">Aucun document trouvé</h3>
+                      <p className="text-slate-500 text-center mb-6 max-w-sm">
+                        Commencez par extraire des documents depuis votre email ou importez-les manuellement.
                       </p>
-                      <button 
-                        onClick={() => setActiveTab('extraction')}
-                        className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
-                      >
-                        Start a Retroactive Extraction
-                      </button>
+                      <div className="flex gap-3">
+                        <Button variant="outline" onClick={() => setActiveTab('extraction')}>
+                          Extraction rétroactive
+                        </Button>
+                        <Button onClick={() => setActiveTab('upload')}>
+                          Importer
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ) : (
@@ -475,17 +477,17 @@ export default function DashboardPage() {
                   }>
                     {documents
                       .filter(doc => {
-                        const matchesSearch = (doc.filename + doc.supplier).toLowerCase().includes(searchTerm.toLowerCase());
+                        const matchesSearch = (doc.filename + (doc.supplier || '')).toLowerCase().includes(searchTerm.toLowerCase());
                         
                         // Apply filters
                         let matchesFilter = true;
                         if (activeFilter === 'to_export') matchesFilter = !doc.exported;
-                        if (activeFilter === 'exported') matchesFilter = doc.exported;
+                        if (activeFilter === 'exported') matchesFilter = doc.exported === true;
                         if (activeFilter === 'to_review') matchesFilter = !doc.analyzed;
-                        if (activeFilter === 'last_extracted') {
+                        if (activeFilter === 'recent') {
                           const date = new Date(doc.createdAt);
                           const now = new Date();
-                          matchesFilter = (now.getTime() - date.getTime()) < 24 * 60 * 60 * 1000;
+                          matchesFilter = (now.getTime() - date.getTime()) < 7 * 24 * 60 * 60 * 1000;
                         }
                         
                         return matchesSearch && matchesFilter;
@@ -509,11 +511,6 @@ export default function DashboardPage() {
             {/* SETTINGS VIEW */}
             {activeTab === 'settings' && <SettingsPage />}
 
-            {/* ANALYTICS VIEW */}
-            {activeTab === 'analytics' && selectedCompanyId && (
-              <Dashboard key={refreshKey} companyId={selectedCompanyId} />
-            )}
-
             {/* SECURITY VIEW */}
             {activeTab === 'security' && (
               <Card padding="lg" className="max-w-3xl mx-auto">
@@ -522,15 +519,20 @@ export default function DashboardPage() {
                     <Shield className="w-6 h-6 text-primary-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-900">Security</h3>
-                    <p className="text-slate-500">Manage your account security</p>
+                    <h3 className="text-xl font-semibold text-slate-900">Sécurité du compte</h3>
+                    <p className="text-slate-500">Gérez les paramètres de sécurité</p>
                   </div>
                 </div>
                 <div className="space-y-4">
                   <div className="p-4 bg-slate-50 rounded-xl">
-                    <h4 className="font-medium text-slate-900 mb-1">Two-factor authentication</h4>
-                    <p className="text-sm text-slate-600 mb-3">Add an extra layer of security</p>
-                    <Button variant="outline" size="sm">Configure</Button>
+                    <h4 className="font-medium text-slate-900 mb-1">Authentification à deux facteurs</h4>
+                    <p className="text-sm text-slate-600 mb-3">Ajoutez une couche de sécurité supplémentaire</p>
+                    <Button variant="outline" size="sm">Configurer</Button>
+                  </div>
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <h4 className="font-medium text-slate-900 mb-1">Sessions actives</h4>
+                    <p className="text-sm text-slate-600 mb-3">Gérez les appareils connectés</p>
+                    <Button variant="outline" size="sm">Voir les sessions</Button>
                   </div>
                 </div>
               </Card>
@@ -544,12 +546,28 @@ export default function DashboardPage() {
                     <CreditCard className="w-6 h-6 text-primary-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-900">Exports History</h3>
-                    <p className="text-slate-500">View your previous exports</p>
+                    <h3 className="text-xl font-semibold text-slate-900">Facturation</h3>
+                    <p className="text-slate-500">Gérez votre abonnement</p>
                   </div>
                 </div>
-                <div className="text-center py-10 text-slate-500">
-                  No exports yet
+                
+                {/* Plan actuel */}
+                <div className="p-6 bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl mb-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-primary-600 font-medium">Plan actuel</p>
+                      <h4 className="text-2xl font-bold text-primary-900">Gratuit</h4>
+                      <p className="text-sm text-primary-700">Jusqu&apos;à 50 documents/mois</p>
+                    </div>
+                    <Button>Passer à Pro</Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <h4 className="font-medium text-slate-900 mb-1">Historique des paiements</h4>
+                    <p className="text-sm text-slate-500">Aucun paiement effectué</p>
+                  </div>
                 </div>
               </Card>
             )}
@@ -562,26 +580,26 @@ export default function DashboardPage() {
                     <HelpCircle className="w-6 h-6 text-primary-600" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-900">Help & Support</h3>
-                    <p className="text-slate-500">How can we help you?</p>
+                    <h3 className="text-xl font-semibold text-slate-900">Aide & Support</h3>
+                    <p className="text-slate-500">Comment pouvons-nous vous aider ?</p>
                   </div>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
                     <h4 className="font-medium text-slate-900 mb-1">📚 Documentation</h4>
-                    <p className="text-sm text-slate-600">Read our detailed guides</p>
+                    <p className="text-sm text-slate-600">Consultez nos guides détaillés</p>
                   </a>
                   <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                    <h4 className="font-medium text-slate-900 mb-1">💬 Live Chat</h4>
-                    <p className="text-sm text-slate-600">Talk to our team</p>
+                    <h4 className="font-medium text-slate-900 mb-1">💬 Chat en direct</h4>
+                    <p className="text-sm text-slate-600">Discutez avec notre équipe</p>
                   </a>
                   <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
                     <h4 className="font-medium text-slate-900 mb-1">📧 Email</h4>
                     <p className="text-sm text-slate-600">support@komptal.com</p>
                   </a>
                   <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                    <h4 className="font-medium text-slate-900 mb-1">🐛 Report a bug</h4>
-                    <p className="text-sm text-slate-600">Help us improve</p>
+                    <h4 className="font-medium text-slate-900 mb-1">🐛 Signaler un bug</h4>
+                    <p className="text-sm text-slate-600">Aidez-nous à améliorer Komptal</p>
                   </a>
                 </div>
               </Card>
