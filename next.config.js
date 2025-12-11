@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'pdfjs-dist'],
+    serverComponentsExternalPackages: ['@prisma/client', 'bcryptjs', 'pdf-parse'],
   },
   images: {
     domains: ['localhost'],
@@ -13,14 +13,9 @@ const nextConfig = {
   },
   webpack: (config, { isServer }) => {
     if (isServer) {
-      // Externaliser les dépendances natives
+      // Externaliser les dépendances natives pour Vercel
       config.externals.push('canvas');
     }
-    // Alias pour pdfjs-dist worker
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'pdfjs-dist/build/pdf.worker.entry': 'pdfjs-dist/build/pdf.worker.mjs',
-    };
     return config;
   },
 };
