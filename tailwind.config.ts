@@ -9,19 +9,26 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Nouvelle palette - Clean & Professional
+        // Palette Receptor AI style - Dark Teal
         primary: {
-          50: '#EEF6FF',
-          100: '#D9EBFF',
-          200: '#BBDDFF',
-          300: '#8CC8FF',
-          400: '#54A8FF',
-          500: '#2B7FFF', // Bleu principal - vif et moderne
-          600: '#1A65DB',
-          700: '#1650B2',
-          800: '#174492',
-          900: '#193A76',
-          950: '#0F244A',
+          50: '#ECFDF5',
+          100: '#D1FAE5',
+          200: '#A7F3D0',
+          300: '#6EE7B7',
+          400: '#34D399',
+          500: '#10B981', // Vert principal - style Receptor
+          600: '#059669',
+          700: '#047857',
+          800: '#065F46',
+          900: '#064E3B',
+          950: '#022C22',
+        },
+        // Couleur sidebar dark
+        sidebar: {
+          DEFAULT: '#0D3B36', // Dark teal principal
+          dark: '#082926',   // Plus foncé pour hover
+          light: '#134E48',  // Plus clair pour active
+          accent: '#10B981', // Accent vert
         },
         // Gris neutres pour le texte et les fonds
         slate: {

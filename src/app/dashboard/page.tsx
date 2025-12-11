@@ -1,5 +1,5 @@
 /**
- * Dashboard Page - Design lumineux et moderne
+ * Dashboard Page - Design Style Receptor AI
  */
 
 'use client';
@@ -12,7 +12,6 @@ import { Dashboard } from '@/components/Dashboard';
 import { UploadDocumentModern } from '@/components/UploadDocumentModern';
 import { DocumentDetail } from '@/components/DocumentDetail';
 import { DocumentCard } from '@/components/documents/DocumentCard';
-import { DocumentFilters } from '@/components/documents/DocumentFilters';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { TeamsPage } from '@/components/teams/TeamsPage';
 import { ConnectorHub } from '@/components/connectors/ConnectorHub';
@@ -27,13 +26,22 @@ import {
   TrendingUp,
   TrendingDown,
   Receipt,
-  Bell,
-  HelpCircle,
+  Download,
+  Filter,
+  LayoutGrid,
+  List,
   Building2,
   Shield,
   CreditCard,
-  MessageCircle
+  HelpCircle,
+  RefreshCcw,
+  ChevronDown,
+  Eye
 } from 'lucide-react';
+
+// Types pour les filtres
+type DocumentFilter = 'all' | 'to_export' | 'exported' | 'to_review' | 'last_extracted';
+type ViewMode = 'grid' | 'list';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -51,9 +59,8 @@ export default function DashboardPage() {
   
   // UI States
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('ALL');
-  const [selectedCategory, setSelectedCategory] = useState('ALL');
-  const [generatingTestData, setGeneratingTestData] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<DocumentFilter>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading');
 
   // Auth Check
@@ -81,7 +88,6 @@ export default function DashboardPage() {
       if (response.ok) {
         let data = await response.json();
         
-        // Si pas d'entreprise, en créer une automatiquement
         if (data.length === 0 && session?.user?.name) {
           const createResponse = await fetch('/api/companies', {
             method: 'POST',
@@ -120,20 +126,17 @@ export default function DashboardPage() {
     }
   };
 
-  const handleGenerateTestData = async () => {
-    if (!selectedCompanyId) return;
-    if (!confirm('🧪 Générer des données de test ? (DEV ONLY)')) return;
-    
-    setGeneratingTestData(true);
-    try {
-      await fetch(`/api/dev/generate-test-data?companyId=${selectedCompanyId}`, { method: 'POST' });
-      setRefreshKey(p => p + 1);
-      alert('✅ Données générées !');
-    } catch (e) {
-      alert('Erreur');
-    } finally {
-      setGeneratingTestData(false);
-    }
+  // Filter counts
+  const filterCounts = {
+    all: documents.length,
+    to_export: documents.filter(d => !d.exported).length,
+    exported: documents.filter(d => d.exported).length,
+    to_review: documents.filter(d => !d.analyzed).length,
+    last_extracted: documents.filter(d => {
+      const date = new Date(d.createdAt);
+      const now = new Date();
+      return (now.getTime() - date.getTime()) < 24 * 60 * 60 * 1000;
+    }).length,
   };
 
   // Loading state
@@ -142,7 +145,7 @@ export default function DashboardPage() {
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-          <p className="text-slate-500 animate-pulse">Chargement de votre espace...</p>
+          <p className="text-slate-500 animate-pulse">Loading...</p>
         </div>
       </div>
     );
@@ -150,26 +153,37 @@ export default function DashboardPage() {
 
   if (!session) return null;
 
-  // Page title based on active tab
+  // Page titles
   const pageTitles: Record<string, { title: string; subtitle: string }> = {
-    dashboard: { title: 'Tableau de Bord', subtitle: 'Vue d\'ensemble de votre activité' },
-    upload: { title: 'Importer des Documents', subtitle: 'Glissez-déposez vos factures' },
-    connectors: { title: 'Email Import', subtitle: 'Connectez vos boîtes mail pour importer automatiquement' },
-    extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures par plage de dates' },
-    whatsapp: { title: 'WhatsApp Business', subtitle: 'Envoyez vos factures par WhatsApp' },
-    documents: { title: 'Mes Factures', subtitle: 'Gérez tous vos documents' },
-    teams: { title: 'Équipes', subtitle: 'Collaborez avec vos collègues' },
-    settings: { title: 'Paramètres', subtitle: 'Gérez votre compte et vos préférences' },
-    security: { title: 'Sécurité', subtitle: 'Gérez la sécurité de votre compte' },
-    billing: { title: 'Facturation', subtitle: 'Gérez votre abonnement' },
-    help: { title: 'Aide & Support', subtitle: 'Obtenez de l\'aide' },
+    dashboard: { title: 'Dashboard', subtitle: 'Overview of your activity' },
+    upload: { title: 'Quick Upload', subtitle: 'Drag and drop your invoices' },
+    connectors: { title: 'Email Accounts', subtitle: 'Connect your email to auto-import' },
+    extraction: { title: 'Retroactive Extraction', subtitle: 'Extract invoices by date range' },
+    documents: { title: 'Accounting documents', subtitle: 'All receipts and invoices (paid and unpaid) ready for reconciliation' },
+    teams: { title: 'Integrations', subtitle: 'Connect your tools' },
+    settings: { title: 'Settings', subtitle: 'Manage your preferences' },
+    billing: { title: 'Exports History', subtitle: 'View your export history' },
+    help: { title: 'Help & Support', subtitle: 'Get help' },
+    analytics: { title: 'Analytics', subtitle: 'Track your financial metrics' },
+    bills: { title: 'Bills to Pay', subtitle: 'Upcoming payments' },
+    recurring: { title: 'Recurring', subtitle: 'Recurring invoices' },
+    vendors: { title: 'Vendors', subtitle: 'Manage your vendors' },
   };
 
   const currentPage = pageTitles[activeTab] || { title: '', subtitle: '' };
 
+  // Filter tabs config
+  const filterTabs: { id: DocumentFilter; label: string; icon?: any }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'to_export', label: 'To Export' },
+    { id: 'exported', label: 'Exported' },
+    { id: 'to_review', label: 'To Review' },
+    { id: 'last_extracted', label: 'Last Extracted' },
+  ];
+
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Document ouvert en plein écran - AU DESSUS DE TOUT */}
+      {/* Document ouvert en plein écran */}
       {selectedDocument && (
         <DocumentDetail 
           document={selectedDocument} 
@@ -179,7 +193,7 @@ export default function DashboardPage() {
             fetchDocuments();
           }}
           onDelete={async () => {
-            if (confirm('Supprimer ce document ?')) {
+            if (confirm('Delete this document?')) {
               await fetch(`/api/documents/${selectedDocument.id}`, { method: 'DELETE' });
               setSelectedDocument(null);
               fetchDocuments();
@@ -200,64 +214,130 @@ export default function DashboardPage() {
       />
 
       {/* Main Content Area */}
-      <div className="ml-20 lg:ml-72 transition-all duration-300">
-        {/* Top Header Bar */}
-        <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-slate-200">
-          <div className="flex justify-between items-center px-6 lg:px-8 h-16">
+      <div className="ml-64 transition-all duration-300">
+        {/* Top Banner - Subscription Warning (like Receptor) */}
+        <div className="bg-rose-500 text-white px-6 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="w-5 h-5 rounded-full border-2 border-white flex items-center justify-center text-xs">!</span>
+            <span>
+              You don&apos;t have an active subscription. You can run{' '}
+              <button onClick={() => setActiveTab('extraction')} className="underline font-medium">
+                Retroactive Extractions
+              </button>
+              , but you&apos;ll need to subscribe to monitor email accounts or upload documents.
+            </span>
+          </div>
+          <button className="px-4 py-1.5 bg-white text-rose-600 rounded-lg text-sm font-medium hover:bg-rose-50 transition-colors">
+            Start free trial
+          </button>
+        </div>
+
+        {/* Page Header */}
+        <header className="bg-white border-b border-slate-200 px-6 py-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-lg font-semibold text-slate-900">{currentPage.title}</h1>
-              <p className="text-sm text-slate-500">{currentPage.subtitle}</p>
+              <h1 className="text-2xl font-semibold text-slate-900">{currentPage.title}</h1>
+              <p className="text-sm text-slate-500 mt-0.5">{currentPage.subtitle}</p>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Search */}
-              <div className="hidden md:block relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
-                  type="text"
-                  placeholder="Rechercher... (Ctrl+K)"
-                  className="w-64 bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-sm 
-                           focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 
-                           placeholder:text-slate-400 transition-all"
-                />
+            {/* Export Button (only on documents view) */}
+            {activeTab === 'documents' && (
+              <button className="flex items-center gap-2 px-4 py-2.5 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors">
+                <Download className="w-4 h-4" />
+                Export All
+                <ChevronDown className="w-4 h-4 ml-1" />
+              </button>
+            )}
+          </div>
+
+          {/* Filter Tabs (only on documents view) */}
+          {activeTab === 'documents' && (
+            <div className="mt-6 flex items-center justify-between">
+              {/* Tabs */}
+              <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
+                {filterTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveFilter(tab.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all
+                      ${activeFilter === tab.id
+                        ? 'bg-white text-slate-900 shadow-sm'
+                        : 'text-slate-600 hover:text-slate-900'
+                      }`}
+                  >
+                    {tab.label}
+                    <span className={`px-1.5 py-0.5 rounded text-xs
+                      ${activeFilter === tab.id
+                        ? 'bg-slate-100 text-slate-700'
+                        : 'bg-slate-200/50 text-slate-500'
+                      }`}>
+                      {filterCounts[tab.id]}
+                    </span>
+                  </button>
+                ))}
               </div>
 
-              {/* Notifications */}
-              <button className="relative p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary-500 rounded-full" />
-              </button>
+              {/* Right Controls */}
+              <div className="flex items-center gap-3">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input 
+                    type="text"
+                    placeholder="Search"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-48 bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm 
+                             focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 
+                             placeholder:text-slate-400 transition-all"
+                  />
+                </div>
 
-              {/* Help */}
-              <button className="p-2 rounded-xl hover:bg-slate-100 text-slate-500 transition-colors">
-                <HelpCircle className="w-5 h-5" />
-              </button>
+                {/* View Buttons */}
+                <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                  <Eye className="w-4 h-4" />
+                  Load View
+                </button>
 
-              {/* Dev Tools */}
-              <Button 
-                variant="ghost"
-                size="sm"
-                onClick={handleGenerateTestData}
-                disabled={generatingTestData}
-                className="hidden lg:flex text-purple-600 hover:bg-purple-50"
-              >
-                {generatingTestData ? '⏳...' : '🧪 Test Data'}
-              </Button>
+                <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                  <Filter className="w-4 h-4" />
+                  Filters
+                </button>
 
+                <button className="px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors">
+                  Actions
+                </button>
+
+                {/* View Mode Toggle */}
+                <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden">
+                  <button 
+                    onClick={() => setViewMode('grid')}
+                    className={`p-2 ${viewMode === 'grid' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('list')}
+                    className={`p-2 ${viewMode === 'list' ? 'bg-slate-100 text-slate-900' : 'text-slate-400 hover:text-slate-600'}`}
+                  >
+                    <List className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
         </header>
 
         {/* Main Content */}
-        <main className="p-6 lg:p-8">
-          <div className="max-w-7xl mx-auto space-y-8 animate-in">
+        <main className="p-6">
+          <div className="max-w-7xl mx-auto animate-in">
             
             {/* LOADING STATE */}
             {loadingState === 'loading' && (
               <div className="flex flex-col items-center justify-center min-h-[60vh]">
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-                  <p className="text-slate-500">Chargement...</p>
+                  <p className="text-slate-500">Loading...</p>
                 </div>
               </div>
             )}
@@ -265,22 +345,19 @@ export default function DashboardPage() {
             {/* DASHBOARD VIEW */}
             {activeTab === 'dashboard' && loadingState === 'ready' && (
               <>
-                {/* Message si pas d'entreprise */}
                 {!selectedCompanyId && (
-                  <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+                  <Card padding="lg" className="text-center py-16">
                     <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
                       <Building2 className="w-8 h-8 text-primary-600" />
                     </div>
-                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Bienvenue sur Komptal !</h3>
+                    <h3 className="text-xl font-semibold text-slate-900 mb-2">Welcome to Komptal!</h3>
                     <p className="text-slate-600 mb-6">
-                      Pour commencer, créez votre première entreprise en cliquant sur le sélecteur d&apos;entreprise en haut à gauche.
+                      Get started by connecting your first email account or uploading documents.
                     </p>
-                  </div>
+                  </Card>
                 )}
 
-                {/* Quick Stats - Calculés depuis les vrais documents */}
                 {selectedCompanyId && (() => {
-                  // Calcul des vraies stats depuis les documents
                   const now = new Date();
                   const thisMonth = documents.filter(d => {
                     const docDate = d.date ? new Date(d.date) : new Date(d.createdAt);
@@ -295,28 +372,27 @@ export default function DashboardPage() {
                     .filter(d => d.docType === 'FACTURE_ACHAT' || d.docType === 'NOTE_FRAIS' || d.docType === 'RECU')
                     .reduce((sum, d) => sum + (d.amount || 0), 0);
                   
-                  const tva = thisMonth
-                    .reduce((sum, d) => sum + (d.vat || 0), 0);
+                  const tva = thisMonth.reduce((sum, d) => sum + (d.vat || 0), 0);
 
                   return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                       <StatCard 
-                        title="Revenus du mois" 
-                        value={`${revenus.toLocaleString('fr-FR')} €`}
+                        title="Revenue" 
+                        value={`€${revenus.toLocaleString('fr-FR')}`}
                         icon={<TrendingUp className="w-6 h-6" />}
-                        iconColor="text-success-500"
+                        iconColor="text-primary-500"
                       />
                       <StatCard 
-                        title="Dépenses" 
-                        value={`${depenses.toLocaleString('fr-FR')} €`}
+                        title="Expenses" 
+                        value={`€${depenses.toLocaleString('fr-FR')}`}
                         icon={<TrendingDown className="w-6 h-6" />}
-                        iconColor="text-danger-500"
+                        iconColor="text-rose-500"
                       />
                       <StatCard 
-                        title="TVA collectée" 
-                        value={`${tva.toLocaleString('fr-FR')} €`}
+                        title="VAT Collected" 
+                        value={`€${tva.toLocaleString('fr-FR')}`}
                         icon={<Receipt className="w-6 h-6" />}
-                        iconColor="text-warning-500"
+                        iconColor="text-amber-500"
                       />
                       <StatCard 
                         title="Documents" 
@@ -328,7 +404,6 @@ export default function DashboardPage() {
                   );
                 })()}
 
-                {/* Main Charts & KPIs - seulement si une entreprise est sélectionnée */}
                 {selectedCompanyId && (
                   <Dashboard key={refreshKey} companyId={selectedCompanyId} />
                 )}
@@ -370,69 +445,50 @@ export default function DashboardPage() {
               />
             )}
 
-            {/* WHATSAPP VIEW */}
-            {activeTab === 'whatsapp' && (
-              <div className="max-w-3xl mx-auto">
-                <WhatsAppSetup />
-              </div>
-            )}
-
             {/* DOCUMENTS VIEW */}
             {activeTab === 'documents' && loadingState === 'ready' && (
               <div className="space-y-6">
-                {/* Controls */}
-                <Card padding="md" className="flex flex-col md:flex-row gap-4 justify-between items-center sticky top-20 z-30">
-                  <div className="relative w-full md:w-96">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Rechercher une facture..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-sm 
-                               focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 transition-all"
-                    />
-                  </div>
-                  
-                  <div className="flex items-center gap-3 w-full md:w-auto">
-                    <DocumentFilters
-                      searchTerm={searchTerm}
-                      onSearchChange={setSearchTerm}
-                      selectedType={selectedType}
-                      onTypeChange={setSelectedType}
-                      selectedCategory={selectedCategory}
-                      onCategoryChange={setSelectedCategory}
-                    />
-                    <Button onClick={() => setActiveTab('upload')} leftIcon={<Plus className="w-4 h-4" />}>
-                      Nouveau
-                    </Button>
-                  </div>
-                </Card>
-
-                {/* Liste des documents */}
                 {documents.length === 0 ? (
-                  <Card padding="lg" className="text-center py-16">
-                    <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <FileText className="w-8 h-8 text-slate-400" />
+                  /* Empty State - Style Receptor */
+                  <div className="bg-white rounded-xl border border-slate-200 border-dashed">
+                    <div className="flex flex-col items-center justify-center py-20">
+                      <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                        <Search className="w-8 h-8 text-slate-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-slate-900 mb-2">No documents found</h3>
+                      <p className="text-slate-500 text-center mb-6">
+                        Start by extracting documents<br />
+                        from your inbox, chats, or uploads.
+                      </p>
+                      <button 
+                        onClick={() => setActiveTab('extraction')}
+                        className="px-4 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        Start a Retroactive Extraction
+                      </button>
                     </div>
-                    <h3 className="text-lg font-semibold text-slate-900 mb-2">Aucun document</h3>
-                    <p className="text-slate-500 mb-6">Commencez par importer vos factures.</p>
-                    <div className="flex gap-3 justify-center">
-                      <Button onClick={() => setActiveTab('upload')} variant="outline">
-                        Importer manuellement
-                      </Button>
-                      <Button onClick={() => setActiveTab('connectors')}>
-                        Connecter Email
-                      </Button>
-                    </div>
-                  </Card>
+                  </div>
                 ) : (
-                  <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  <div className={viewMode === 'grid' 
+                    ? 'grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
+                    : 'space-y-2'
+                  }>
                     {documents
                       .filter(doc => {
                         const matchesSearch = (doc.filename + doc.supplier).toLowerCase().includes(searchTerm.toLowerCase());
-                        const matchesType = selectedType === 'ALL' || doc.docType === selectedType;
-                        return matchesSearch && matchesType;
+                        
+                        // Apply filters
+                        let matchesFilter = true;
+                        if (activeFilter === 'to_export') matchesFilter = !doc.exported;
+                        if (activeFilter === 'exported') matchesFilter = doc.exported;
+                        if (activeFilter === 'to_review') matchesFilter = !doc.analyzed;
+                        if (activeFilter === 'last_extracted') {
+                          const date = new Date(doc.createdAt);
+                          const now = new Date();
+                          matchesFilter = (now.getTime() - date.getTime()) < 24 * 60 * 60 * 1000;
+                        }
+                        
+                        return matchesSearch && matchesFilter;
                       })
                       .map((doc) => (
                         <DocumentCard
@@ -448,131 +504,87 @@ export default function DashboardPage() {
             )}
 
             {/* TEAMS VIEW */}
-            {activeTab === 'teams' && (
-              <TeamsPage />
-            )}
+            {activeTab === 'teams' && <TeamsPage />}
 
             {/* SETTINGS VIEW */}
-            {activeTab === 'settings' && (
-              <SettingsPage />
+            {activeTab === 'settings' && <SettingsPage />}
+
+            {/* ANALYTICS VIEW */}
+            {activeTab === 'analytics' && selectedCompanyId && (
+              <Dashboard key={refreshKey} companyId={selectedCompanyId} />
             )}
 
             {/* SECURITY VIEW */}
             {activeTab === 'security' && (
-              <div className="max-w-3xl mx-auto">
-                <Card padding="lg">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-primary-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-900">Sécurité du compte</h3>
-                      <p className="text-slate-500">Gérez les paramètres de sécurité</p>
-                    </div>
+              <Card padding="lg" className="max-w-3xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                    <Shield className="w-6 h-6 text-primary-600" />
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="p-4 bg-slate-50 rounded-xl">
-                      <h4 className="font-medium text-slate-900 mb-1">Authentification à deux facteurs</h4>
-                      <p className="text-sm text-slate-600 mb-3">Ajoutez une couche de sécurité supplémentaire</p>
-                      <Button variant="outline" size="sm">Configurer</Button>
-                    </div>
-
-                    <div className="p-4 bg-slate-50 rounded-xl">
-                      <h4 className="font-medium text-slate-900 mb-1">Sessions actives</h4>
-                      <p className="text-sm text-slate-600 mb-3">Gérez les appareils connectés à votre compte</p>
-                      <Button variant="outline" size="sm">Voir les sessions</Button>
-                    </div>
-
-                    <div className="p-4 bg-slate-50 rounded-xl">
-                      <h4 className="font-medium text-slate-900 mb-1">Changer le mot de passe</h4>
-                      <p className="text-sm text-slate-600 mb-3">Mettez à jour votre mot de passe régulièrement</p>
-                      <Button variant="outline" size="sm">Modifier</Button>
-                    </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900">Security</h3>
+                    <p className="text-slate-500">Manage your account security</p>
                   </div>
-                </Card>
-              </div>
+                </div>
+                <div className="space-y-4">
+                  <div className="p-4 bg-slate-50 rounded-xl">
+                    <h4 className="font-medium text-slate-900 mb-1">Two-factor authentication</h4>
+                    <p className="text-sm text-slate-600 mb-3">Add an extra layer of security</p>
+                    <Button variant="outline" size="sm">Configure</Button>
+                  </div>
+                </div>
+              </Card>
             )}
 
             {/* BILLING VIEW */}
             {activeTab === 'billing' && (
-              <div className="max-w-3xl mx-auto">
-                <Card padding="lg">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-                      <CreditCard className="w-6 h-6 text-primary-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-900">Facturation</h3>
-                      <p className="text-slate-500">Gérez votre abonnement et vos paiements</p>
-                    </div>
+              <Card padding="lg" className="max-w-3xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                    <CreditCard className="w-6 h-6 text-primary-600" />
                   </div>
-
-                  {/* Plan actuel */}
-                  <div className="p-6 bg-gradient-to-r from-primary-50 to-primary-100 rounded-xl mb-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm text-primary-600 font-medium">Plan actuel</p>
-                        <h4 className="text-2xl font-bold text-primary-900">Gratuit</h4>
-                        <p className="text-sm text-primary-700">Jusqu&apos;à 50 documents/mois</p>
-                      </div>
-                      <Button>Passer à Pro</Button>
-                    </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900">Exports History</h3>
+                    <p className="text-slate-500">View your previous exports</p>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="p-4 bg-slate-50 rounded-xl">
-                      <h4 className="font-medium text-slate-900 mb-1">Historique des paiements</h4>
-                      <p className="text-sm text-slate-500">Aucun paiement effectué</p>
-                    </div>
-
-                    <div className="p-4 bg-slate-50 rounded-xl">
-                      <h4 className="font-medium text-slate-900 mb-1">Moyen de paiement</h4>
-                      <p className="text-sm text-slate-600 mb-3">Aucune carte enregistrée</p>
-                      <Button variant="outline" size="sm">Ajouter une carte</Button>
-                    </div>
-                  </div>
-                </Card>
-              </div>
+                </div>
+                <div className="text-center py-10 text-slate-500">
+                  No exports yet
+                </div>
+              </Card>
             )}
 
             {/* HELP VIEW */}
             {activeTab === 'help' && (
-              <div className="max-w-3xl mx-auto">
-                <Card padding="lg">
-                  <div className="flex items-center gap-4 mb-6">
-                    <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
-                      <HelpCircle className="w-6 h-6 text-primary-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-slate-900">Aide & Support</h3>
-                      <p className="text-slate-500">Comment pouvons-nous vous aider ?</p>
-                    </div>
+              <Card padding="lg" className="max-w-3xl mx-auto">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center">
+                    <HelpCircle className="w-6 h-6 text-primary-600" />
                   </div>
-
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                      <h4 className="font-medium text-slate-900 mb-1">📚 Documentation</h4>
-                      <p className="text-sm text-slate-600">Consultez nos guides détaillés</p>
-                    </a>
-
-                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                      <h4 className="font-medium text-slate-900 mb-1">💬 Chat en direct</h4>
-                      <p className="text-sm text-slate-600">Discutez avec notre équipe</p>
-                    </a>
-
-                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                      <h4 className="font-medium text-slate-900 mb-1">📧 Email</h4>
-                      <p className="text-sm text-slate-600">support@komptal.com</p>
-                    </a>
-
-                    <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                      <h4 className="font-medium text-slate-900 mb-1">🐛 Signaler un bug</h4>
-                      <p className="text-sm text-slate-600">Aidez-nous à améliorer Komptal</p>
-                    </a>
+                  <div>
+                    <h3 className="text-xl font-semibold text-slate-900">Help & Support</h3>
+                    <p className="text-slate-500">How can we help you?</p>
                   </div>
-                </Card>
-              </div>
+                </div>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <h4 className="font-medium text-slate-900 mb-1">📚 Documentation</h4>
+                    <p className="text-sm text-slate-600">Read our detailed guides</p>
+                  </a>
+                  <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <h4 className="font-medium text-slate-900 mb-1">💬 Live Chat</h4>
+                    <p className="text-sm text-slate-600">Talk to our team</p>
+                  </a>
+                  <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <h4 className="font-medium text-slate-900 mb-1">📧 Email</h4>
+                    <p className="text-sm text-slate-600">support@komptal.com</p>
+                  </a>
+                  <a href="#" className="p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                    <h4 className="font-medium text-slate-900 mb-1">🐛 Report a bug</h4>
+                    <p className="text-sm text-slate-600">Help us improve</p>
+                  </a>
+                </div>
+              </Card>
             )}
 
           </div>

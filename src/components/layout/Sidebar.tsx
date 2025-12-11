@@ -1,6 +1,6 @@
 /**
- * Sidebar Navigation - Design lumineux et moderne
- * Avec menu profil cliquable
+ * Sidebar Navigation - Dark Theme Style Receptor AI
+ * Avec sections collapsibles et design moderne
  */
 
 'use client';
@@ -11,17 +11,21 @@ import {
   UploadCloud, 
   FileText, 
   LogOut,
-  ChevronLeft,
+  ChevronDown,
   ChevronRight,
   Building2,
-  Link2,
+  Mail,
   Settings,
   CreditCard,
   HelpCircle,
-  Shield,
-  ChevronUp,
   Users,
-  Calendar
+  Calendar,
+  BarChart3,
+  Receipt,
+  RefreshCcw,
+  Briefcase,
+  Sparkles,
+  ExternalLink
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
@@ -35,6 +39,14 @@ interface SidebarProps {
   setSelectedCompanyId: (id: string) => void;
 }
 
+interface MenuSection {
+  id: string;
+  label: string;
+  icon: any;
+  items?: { id: string; label: string; icon?: any }[];
+  isExpandable?: boolean;
+}
+
 export function Sidebar({
   activeTab,
   setActiveTab,
@@ -44,238 +56,217 @@ export function Sidebar({
   selectedCompanyId,
   setSelectedCompanyId
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [showProfileMenu, setShowProfileMenu] = useState(false);
-  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const [expandedSections, setExpandedSections] = useState<string[]>(['documents']);
 
-  // Fermer le menu au clic extérieur
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
-        setShowProfileMenu(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const toggleSection = (sectionId: string) => {
+    setExpandedSections(prev => 
+      prev.includes(sectionId) 
+        ? prev.filter(id => id !== sectionId)
+        : [...prev, sectionId]
+    );
+  };
 
-  const mainMenuItems = [
-    { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-    { id: 'upload', label: 'Importer', icon: UploadCloud },
-    { id: 'connectors', label: 'Email', icon: Link2 },
-    { id: 'extraction', label: 'Extraction', icon: Calendar, isNew: true },
-    { id: 'documents', label: 'Mes Factures', icon: FileText },
-    { id: 'teams', label: 'Équipes', icon: Users },
+  const menuSections: MenuSection[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { 
+      id: 'sources', 
+      label: 'Sources', 
+      icon: Mail,
+      isExpandable: true,
+      items: [
+        { id: 'connectors', label: 'Email Accounts' },
+        { id: 'upload', label: 'Quick Upload' },
+      ]
+    },
+    { 
+      id: 'documents', 
+      label: 'Documents', 
+      icon: FileText,
+      isExpandable: true,
+      items: [
+        { id: 'documents', label: 'Accounting' },
+        { id: 'bills', label: 'Bills to Pay' },
+        { id: 'recurring', label: 'Recurring' },
+        { id: 'vendors', label: 'Vendors' },
+      ]
+    },
+    { id: 'extraction', label: 'Retroactive', icon: RefreshCcw },
+    { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+    { 
+      id: 'rules', 
+      label: 'Rules', 
+      icon: Settings,
+      isExpandable: true,
+      items: [
+        { id: 'settings', label: 'Settings' },
+      ]
+    },
+    { id: 'teams', label: 'Integrations', icon: Briefcase },
   ];
 
-  const profileMenuItems = [
-    { id: 'settings', label: 'Paramètres du compte', icon: Settings },
-    { id: 'security', label: 'Sécurité', icon: Shield },
-    { id: 'billing', label: 'Facturation', icon: CreditCard },
-    { id: 'help', label: 'Aide & Support', icon: HelpCircle },
+  const bottomMenuItems = [
+    { id: 'billing', label: 'Exports History', icon: Receipt },
+    { id: 'help', label: 'Settings', icon: Settings },
   ];
 
   return (
-    <aside 
-      className={`
-        fixed left-0 top-0 h-screen bg-white border-r border-slate-200
-        transition-all duration-300 ease-out z-50 flex flex-col
-        ${collapsed ? 'w-20' : 'w-72'}
-      `}
-    >
-      {/* Header Logo */}
-      <div className="h-16 flex items-center px-5 border-b border-slate-100">
-        <div className="flex items-center gap-3 overflow-hidden">
-          <img src="/logo-icon.svg" alt="Komptal" className="w-9 h-9 flex-shrink-0" />
-          <span className={`text-xl font-bold text-slate-900 whitespace-nowrap transition-all duration-300 ${collapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
-            Komptal
-          </span>
+    <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar flex flex-col z-50">
+      {/* Header - Logo & Ask AI Button */}
+      <div className="p-4 border-b border-white/10">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">K</span>
+          </div>
+          <span className="text-white font-semibold text-lg">Komptal</span>
         </div>
+        
+        {/* Ask AI Button */}
+        <button className="w-full flex items-center gap-2 px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-sm font-medium transition-colors">
+          <Sparkles className="w-4 h-4" />
+          Ask AI
+          <span className="ml-auto text-xs bg-white/20 px-1.5 py-0.5 rounded">Upgrade</span>
+        </button>
       </div>
 
       {/* Company Selector */}
-      <div className={`px-4 py-4 ${collapsed ? 'items-center' : ''} flex flex-col`}>
-        {!collapsed && (
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wider mb-2 px-1">
-            Entreprise
-          </p>
-        )}
-        
+      <div className="px-4 py-3 border-b border-white/10">
         {companies.length > 0 ? (
-          collapsed ? (
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center mx-auto cursor-pointer hover:bg-slate-200 transition-colors">
-              <Building2 className="w-5 h-5 text-slate-600" />
-            </div>
-          ) : (
-            <select
-              value={selectedCompanyId || ''}
-              onChange={(e) => setSelectedCompanyId(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-700 
-                        focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 
-                        transition-all hover:bg-slate-100 cursor-pointer"
-            >
-              {companies.map((company) => (
-                <option key={company.id} value={company.id}>
-                  {company.name}
-                </option>
-              ))}
-            </select>
-          )
+          <select
+            value={selectedCompanyId || ''}
+            onChange={(e) => setSelectedCompanyId(e.target.value)}
+            className="w-full bg-sidebar-light border border-white/10 rounded-lg px-3 py-2 text-sm text-white/90 
+                      focus:outline-none focus:ring-2 focus:ring-primary-500/50 
+                      transition-all cursor-pointer appearance-none"
+            style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='white'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center', backgroundSize: '16px' }}
+          >
+            {companies.map((company) => (
+              <option key={company.id} value={company.id} className="bg-sidebar text-white">
+                {company.name}
+              </option>
+            ))}
+          </select>
         ) : (
-          !collapsed && (
-            <p className="text-xs text-slate-400 px-1">Aucune entreprise</p>
-          )
+          <div className="flex items-center gap-2 text-white/50 text-sm">
+            <Building2 className="w-4 h-4" />
+            No company
+          </div>
         )}
       </div>
 
       {/* Main Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
-        {/* Main Menu */}
-        <div className="space-y-1">
-          {mainMenuItems.map((item) => (
-            <NavItem
-              key={item.id}
-              item={item}
-              isActive={activeTab === item.id}
-              collapsed={collapsed}
-              onClick={() => setActiveTab(item.id)}
-            />
-          ))}
-        </div>
+      <nav className="flex-1 overflow-y-auto py-2 custom-scrollbar-dark">
+        {menuSections.map((section) => (
+          <div key={section.id} className="px-2">
+            {section.isExpandable ? (
+              <>
+                {/* Expandable Section Header */}
+                <button
+                  onClick={() => toggleSection(section.id)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                    ${expandedSections.includes(section.id) 
+                      ? 'text-white bg-white/5' 
+                      : 'text-white/70 hover:text-white hover:bg-white/5'
+                    }`}
+                >
+                  <section.icon className="w-5 h-5" />
+                  <span className="flex-1 text-left">{section.label}</span>
+                  {expandedSections.includes(section.id) 
+                    ? <ChevronDown className="w-4 h-4 text-white/50" />
+                    : <ChevronRight className="w-4 h-4 text-white/50" />
+                  }
+                </button>
+                
+                {/* Sub Items */}
+                {expandedSections.includes(section.id) && section.items && (
+                  <div className="ml-4 mt-1 space-y-0.5 border-l border-white/10 pl-3">
+                    {section.items.map((item) => (
+                      <button
+                        key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all
+                          ${activeTab === item.id
+                            ? 'text-primary-400 bg-primary-500/10 font-medium'
+                            : 'text-white/60 hover:text-white hover:bg-white/5'
+                          }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${activeTab === item.id ? 'bg-primary-400' : 'bg-white/30'}`} />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Single Item */
+              <button
+                onClick={() => setActiveTab(section.id)}
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all
+                  ${activeTab === section.id
+                    ? 'text-white bg-sidebar-light'
+                    : 'text-white/70 hover:text-white hover:bg-white/5'
+                  }`}
+              >
+                <section.icon className="w-5 h-5" />
+                <span>{section.label}</span>
+              </button>
+            )}
+          </div>
+        ))}
       </nav>
 
-      {/* Footer User Profile - Cliquable */}
-      <div className="relative p-4 border-t border-slate-100 bg-slate-50/50" ref={profileMenuRef}>
-        {/* Menu Dropdown */}
-        {showProfileMenu && !collapsed && (
-          <div className="absolute bottom-full left-4 right-4 mb-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-2">
-            <div className="p-3 border-b border-slate-100 bg-slate-50">
-              <p className="text-sm font-semibold text-slate-900">{userName || 'Utilisateur'}</p>
-              <p className="text-xs text-slate-500 truncate">{userEmail}</p>
-            </div>
-            
-            <div className="py-2">
-              {profileMenuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              ))}
-            </div>
+      {/* Bottom Section */}
+      <div className="border-t border-white/10 p-2">
+        {bottomMenuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all
+              ${activeTab === item.id
+                ? 'text-white bg-sidebar-light'
+                : 'text-white/60 hover:text-white hover:bg-white/5'
+              }`}
+          >
+            <item.icon className="w-5 h-5" />
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </div>
 
-            <div className="border-t border-slate-100">
-              <button
-                onClick={() => signOut()}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <LogOut className="w-4 h-4" />
-                Déconnexion
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Profile Button */}
-        <button
-          onClick={() => !collapsed && setShowProfileMenu(!showProfileMenu)}
-          className={`w-full flex items-center gap-3 ${collapsed ? 'justify-center' : ''} 
-                     rounded-xl p-2 hover:bg-slate-100 transition-all cursor-pointer group`}
+      {/* Footer - Help & User */}
+      <div className="p-4 border-t border-white/10">
+        {/* Help Link */}
+        <a 
+          href="#" 
+          className="flex items-center gap-2 text-xs text-white/50 hover:text-white/70 mb-4 transition-colors"
         >
-          {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 
-                         group-hover:ring-2 group-hover:ring-primary-200 transition-all">
-            <span className="text-sm font-semibold text-primary-600">
+          <HelpCircle className="w-4 h-4" />
+          How do I integrate with Komptal?
+        </a>
+
+        {/* User Profile */}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center">
+            <span className="text-white text-xs font-semibold">
               {(userName?.[0] || userEmail?.[0] || 'U').toUpperCase()}
             </span>
           </div>
-          
-          {!collapsed && (
-            <>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-slate-900 truncate">
-                  {userName || 'Utilisateur'}
-                </p>
-                <p className="text-xs text-slate-500 truncate">
-                  {userEmail || ''}
-                </p>
-              </div>
-              
-              <ChevronUp className={`w-4 h-4 text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
-            </>
-          )}
-        </button>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm text-white font-medium truncate">
+              {userName || 'User'}
+            </p>
+            <p className="text-xs text-white/50 truncate">
+              {userEmail || ''}
+            </p>
+          </div>
+          <button 
+            onClick={() => signOut()}
+            className="p-1.5 text-white/40 hover:text-white/70 hover:bg-white/5 rounded-lg transition-colors"
+            title="Déconnexion"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
       </div>
-
-      {/* Collapse Toggle */}
-      <button
-        onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-slate-200 rounded-full 
-                   flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 
-                   transition-all shadow-soft-sm z-50"
-      >
-        {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
-      </button>
     </aside>
-  );
-}
-
-/* ===========================================
-   NAV ITEM COMPONENT
-   =========================================== */
-
-interface NavItemProps {
-  item: {
-    id: string;
-    label: string;
-    icon: any;
-    isNew?: boolean;
-  };
-  isActive: boolean;
-  collapsed: boolean;
-  onClick: () => void;
-}
-
-function NavItem({ item, isActive, collapsed, onClick }: NavItemProps) {
-  const Icon = item.icon;
-
-  return (
-    <button
-      onClick={onClick}
-      className={`
-        w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
-        ${isActive 
-          ? 'bg-primary-50 text-primary-700' 
-          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-        }
-      `}
-      title={collapsed ? item.label : ''}
-    >
-      {/* Active indicator */}
-      {isActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-500 rounded-r-full" />
-      )}
-      
-      {/* Icon */}
-      <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
-      
-      {/* Label */}
-      <span className={`text-sm font-medium whitespace-nowrap transition-all duration-300 ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-        {item.label}
-      </span>
-
-      {/* New badge */}
-      {item.isNew && !collapsed && (
-        <span className="ml-auto px-2 py-0.5 bg-primary-500 text-white text-[10px] font-bold rounded-full uppercase">
-          New
-        </span>
-      )}
-    </button>
   );
 }
