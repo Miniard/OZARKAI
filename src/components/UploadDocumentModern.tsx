@@ -110,31 +110,8 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
       const uploadData = await uploadRes.json();
       console.log('✅ [UPLOAD] Upload réussi, documentId:', uploadData.documentId);
 
-      // Update status: analyzing
-      setFiles((prev) =>
-        prev.map((f) => (f.id === uploadedFile.id ? { ...f, status: 'analyzing' as const } : f))
-      );
-
-      console.log('🤖 [ANALYZE] Début analyse IA pour:', uploadData.documentId);
-      const analyzeRes = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: uploadData.documentId }),
-      });
-
-      if (!analyzeRes.ok) {
-        const errorText = await analyzeRes.text();
-        console.error('❌ [ANALYZE] Erreur:', analyzeRes.status, errorText);
-        throw new Error(`Erreur d'analyse: ${analyzeRes.statusText}`);
-      }
-
-      const analyzeData = await analyzeRes.json();
-      console.log('✅ [ANALYZE] Analyse réussie!');
-      console.log('📊 [ANALYZE] Lignes extraites:', analyzeData.analysis?.lineItems?.length || 0);
-      console.log('💰 [ANALYZE] Montant:', analyzeData.analysis?.montantTTC);
-      console.log('🏢 [ANALYZE] Fournisseur:', analyzeData.analysis?.fournisseur);
-
-      // Update status: success
+      // ✨ L'analyse se lance automatiquement en arrière-plan sur le serveur
+      // On affiche "success" direct, l'utilisateur n'attend pas
       setFiles((prev) =>
         prev.map((f) =>
           f.id === uploadedFile.id
@@ -142,10 +119,10 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
                 ...f,
                 status: 'success' as const,
                 result: {
-                  type: analyzeData.document?.docType || analyzeData.analysis?.type || 'AUTRE',
-                  amount: analyzeData.document?.amount || analyzeData.analysis?.montantTTC || 0,
-                  category: analyzeData.document?.analysisData?.category || analyzeData.analysis?.category || 'Non catégorisé',
-                  supplier: analyzeData.document?.supplier || analyzeData.analysis?.fournisseur,
+                  type: 'ANALYSING',
+                  amount: 0,
+                  category: 'En cours d\'analyse...',
+                  supplier: undefined,
                 },
               }
             : f
@@ -248,9 +225,9 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
             <Sparkles className="w-5 h-5 text-primary-500" />
           </div>
           <div>
-            <h4 className="font-medium text-primary-900 mb-0.5">Analyse IA automatique</h4>
+            <h4 className="font-medium text-primary-900 mb-0.5">Analyse IA instantanée ⚡</h4>
             <p className="text-sm text-primary-700">
-              Notre IA va extraire automatiquement les informations : montant, date, fournisseur, TVA...
+              Déposez vos fichiers - l'IA analyse automatiquement en arrière-plan (montant, date, fournisseur, TVA...)
             </p>
           </div>
         </div>
@@ -276,9 +253,9 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
                 <Button
                   onClick={handleUploadAll}
                   isLoading={isProcessing}
-                  leftIcon={<Sparkles className="w-4 h-4" />}
+                  leftIcon={<Upload className="w-4 h-4" />}
                 >
-                  Analyser ({pendingCount})
+                  Envoyer ({pendingCount})
                 </Button>
               )}
               <Button
@@ -332,6 +309,7 @@ function FileItem({
       NOTE_FRAIS: '🍴 Note de Frais',
       RECU: '🧾 Reçu',
       AUTRE: '📄 Autre',
+      ANALYSING: '⏳ Analyse en cours...',
     };
     return labels[type] || type;
   };
@@ -364,14 +342,18 @@ function FileItem({
         {/* Result */}
         {status === 'success' && result && (
           <div className="mt-2 flex items-center gap-4 text-sm">
-            <span className="px-2 py-0.5 bg-slate-100 rounded-lg text-slate-600">
+            <span className={`px-2 py-0.5 rounded-lg ${result.type === 'ANALYSING' ? 'bg-amber-100 text-amber-700' : 'bg-slate-100 text-slate-600'}`}>
               {getDocTypeLabel(result.type)}
             </span>
-            <span className="font-semibold text-success-600">
-              {result.amount.toFixed(2)} €
-            </span>
-            {result.supplier && (
-              <span className="text-slate-500">{result.supplier}</span>
+            {result.type !== 'ANALYSING' && (
+              <>
+                <span className="font-semibold text-success-600">
+                  {result.amount.toFixed(2)} €
+                </span>
+                {result.supplier && (
+                  <span className="text-slate-500">{result.supplier}</span>
+                )}
+              </>
             )}
           </div>
         )}

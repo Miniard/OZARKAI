@@ -4,6 +4,8 @@
  * 
  * Sur Vercel, les fichiers sont stockés en base64 dans la base de données
  * En local, les fichiers sont écrits sur le filesystem pour les performances
+ * 
+ * ✨ L'analyse IA est lancée automatiquement en arrière-plan après l'upload
  */
 
 export const dynamic = 'force-dynamic';
@@ -13,6 +15,7 @@ import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
 import { rateLimitMiddleware } from '@/lib/security/ratelimit';
 import { getClientIp } from '@/lib/utils';
+import { analyzeDocument } from '@/lib/analyze';
 
 // Limite de taille pour le stockage base64 (5 MB)
 const MAX_BASE64_SIZE = 5 * 1024 * 1024;
@@ -141,10 +144,25 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ [UPLOAD] Document créé:', document.id);
 
+    // 🚀 Lancer l'analyse IA en arrière-plan (fire and forget)
+    // Le client n'attend pas - l'analyse se fait automatiquement
+    analyzeDocument(document.id)
+      .then((result) => {
+        if (result.success) {
+          console.log('✅ [AUTO-ANALYZE] Analyse terminée pour:', document.id);
+        } else {
+          console.warn('⚠️ [AUTO-ANALYZE] Échec analyse:', document.id, result.error);
+        }
+      })
+      .catch((err) => {
+        console.error('❌ [AUTO-ANALYZE] Erreur:', document.id, err);
+      });
+
     return NextResponse.json({
       success: true,
       documentId: document.id,
       fileUrl: fileUrl.startsWith('data:') ? '[base64]' : fileUrl,
+      analyzing: true, // Indique au frontend que l'analyse est en cours
     });
   } catch (error) {
     console.error('❌ [UPLOAD] Erreur:', error);
