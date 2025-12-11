@@ -123,7 +123,6 @@ AUTRES RÈGLES:
 async function extractPDFText(source: string | Buffer): Promise<string> {
   try {
     // Importer pdf-parse avec require (compatible CommonJS et serverless)
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const pdfParse = require('pdf-parse');
     
     let data: Buffer;
