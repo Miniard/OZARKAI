@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Construire la requête de recherche Gmail
-    // Rechercher les emails avec pièces jointes de type facture/PDF
+    // Rechercher les emails avec pièces jointes PDF/images (sans filtre de mots-clés pour être moins restrictif)
     let query = 'has:attachment (filename:pdf OR filename:jpg OR filename:jpeg OR filename:png)';
     
     // Ajouter les filtres de date si fournis
@@ -68,8 +68,8 @@ export async function POST(request: NextRequest) {
       query += ` before:${end.getFullYear()}/${end.getMonth() + 1}/${end.getDate() + 1}`; // +1 pour inclure le jour
     }
 
-    // Ajouter des mots-clés pour les factures
-    query += ' (facture OR invoice OR reçu OR receipt OR order OR commande)';
+    // NOTE: On ne filtre plus par mots-clés pour récupérer TOUS les PDFs/images
+    // L'utilisateur peut trier après dans l'interface
 
     console.log('📧 Gmail search query:', query);
 

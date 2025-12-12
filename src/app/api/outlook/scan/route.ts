@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Construire le filtre OData pour Microsoft Graph
+    // On récupère TOUS les emails avec pièces jointes (sans filtre de mots-clés)
     let filter = 'hasAttachments eq true';
     
     // Ajouter les filtres de date si fournis
@@ -68,16 +69,11 @@ export async function POST(request: NextRequest) {
       filter += ` and receivedDateTime lt ${end.toISOString()}`;
     }
 
-    // Recherche avec mots-clés pour factures
-    const search = 'facture OR invoice OR reçu OR receipt OR order OR commande';
-
     console.log('📧 Outlook filter:', filter);
-    console.log('🔍 Outlook search:', search);
 
-    // Rechercher les emails
+    // Rechercher les emails (sans filtre $search pour récupérer tous les emails avec pièces jointes)
     const searchUrl = new URL(`${GRAPH_API_URL}/me/messages`);
     searchUrl.searchParams.set('$filter', filter);
-    searchUrl.searchParams.set('$search', `"${search}"`);
     searchUrl.searchParams.set('$select', 'id,subject,from,receivedDateTime,hasAttachments');
     searchUrl.searchParams.set('$top', maxResults.toString());
     searchUrl.searchParams.set('$orderby', 'receivedDateTime desc');
