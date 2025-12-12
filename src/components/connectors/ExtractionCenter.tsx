@@ -20,7 +20,8 @@ import {
   Plus,
   Settings,
   ArrowRight,
-  Clock
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 
 interface Extraction {
@@ -120,6 +121,11 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
       return;
     }
 
+    if (!companyId) {
+      setError('Aucune entreprise sélectionnée. Retournez au tableau de bord.');
+      return;
+    }
+
     // Validation des dates personnalisées
     if (dateRange === 'custom') {
       if (!customStartDate || !customEndDate) {
@@ -133,7 +139,10 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
     }
 
     const emailAccount = connectedEmails.find(e => e.email === selectedEmail);
-    if (!emailAccount) return;
+    if (!emailAccount) {
+      setError('Compte email non trouvé');
+      return;
+    }
 
     setIsExtracting(true);
     setError(null);
@@ -145,6 +154,8 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
     try {
       // 1. Scanner les emails
       const scanEndpoint = emailAccount.source === 'outlook' ? '/api/outlook/scan' : '/api/gmail/scan';
+      console.log('🔍 Scanning emails:', { scanEndpoint, companyId, start, end });
+      
       const scanRes = await fetch(scanEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -156,10 +167,25 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
         }),
       });
 
+      if (!scanRes.ok) {
+        const errorText = await scanRes.text();
+        console.error('Scan failed:', scanRes.status, errorText);
+        setError(`Erreur lors du scan: ${scanRes.status}`);
+        setIsExtracting(false);
+        return;
+      }
+
       const scanData = await scanRes.json();
+      console.log('📧 Scan result:', scanData);
+      
+      if (scanData.error) {
+        setError(scanData.error);
+        setIsExtracting(false);
+        return;
+      }
       
       if (scanData.needsReconnect) {
-        setError('Session expirée. Veuillez reconnecter votre compte.');
+        setError('Session expirée. Veuillez reconnecter votre compte dans l\'onglet "Email".');
         setIsExtracting(false);
         return;
       }
@@ -176,22 +202,33 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
       // 2. Importer chaque email
       const importEndpoint = emailAccount.source === 'outlook' ? '/api/outlook/import' : '/api/gmail/import';
       let totalImported = 0;
+      let importErrors = 0;
 
       for (let i = 0; i < emails.length; i++) {
         setExtractionProgress({ current: i + 1, total: emails.length });
         
-        const res = await fetch(importEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            emailId: emails[i].id,
-            companyId,
-          }),
-        });
+        try {
+          const res = await fetch(importEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              emailId: emails[i].id,
+              companyId,
+            }),
+          });
 
-        const data = await res.json();
-        if (data.importedCount) {
-          totalImported += data.importedCount;
+          if (res.ok) {
+            const data = await res.json();
+            if (data.importedCount) {
+              totalImported += data.importedCount;
+            }
+          } else {
+            importErrors++;
+            console.error('Import failed for email:', emails[i].id);
+          }
+        } catch (importErr) {
+          importErrors++;
+          console.error('Import error:', importErr);
         }
       }
 
@@ -206,7 +243,11 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
       };
       setRecentExtractions(prev => [newExtraction, ...prev]);
 
-      setSuccess(`${totalImported} document${totalImported > 1 ? 's' : ''} importé${totalImported > 1 ? 's' : ''} avec succès !`);
+      let successMessage = `${totalImported} document${totalImported > 1 ? 's' : ''} importé${totalImported > 1 ? 's' : ''} avec succès !`;
+      if (importErrors > 0) {
+        successMessage += ` (${importErrors} erreur${importErrors > 1 ? 's' : ''})`;
+      }
+      setSuccess(successMessage);
       
       if (onDocumentsImported && totalImported > 0) {
         onDocumentsImported();
@@ -253,9 +294,19 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
 
             {/* Sélection compte email */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-slate-700 mb-3">
-                Compte de messagerie
-              </label>
+              <div className="flex items-center justify-between mb-3">
+                <label className="block text-sm font-medium text-slate-700">
+                  Compte de messagerie
+                </label>
+                <button 
+                  onClick={checkConnections}
+                  disabled={isCheckingConnections}
+                  className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                >
+                  <RefreshCw className={`w-3 h-3 ${isCheckingConnections ? 'animate-spin' : ''}`} />
+                  Actualiser
+                </button>
+              </div>
               
               {isCheckingConnections ? (
                 <div className="flex items-center gap-2 text-slate-500">
@@ -292,9 +343,12 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
                       <span className="text-sm text-slate-700">{account.email}</span>
                     </label>
                   ))}
-                  <button className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 mt-2">
+                  <button 
+                    onClick={() => window.location.href = '/dashboard?tab=connectors'}
+                    className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 mt-2"
+                  >
                     <Plus className="w-4 h-4" />
-                    Ajouter un compte
+                    Ajouter un autre compte
                   </button>
                 </div>
               )}
@@ -406,22 +460,40 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
 
             {/* Bouton action */}
             <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <button className="text-sm text-slate-500 hover:text-slate-700">
-                Annuler
-              </button>
-              <Button
-                onClick={handleExtract}
-                disabled={isExtracting || !selectedEmail}
-                className="bg-primary-500 hover:bg-primary-600"
+              <button 
+                onClick={() => {
+                  setError(null);
+                  setSuccess(null);
+                }}
+                className="text-sm text-slate-500 hover:text-slate-700"
               >
-                {isExtracting ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                ) : (
-                  <Download className="w-4 h-4 mr-2" />
-                )}
-                Lancer l'extraction
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+                Réinitialiser
+              </button>
+              
+              {connectedEmails.length === 0 ? (
+                <Button
+                  onClick={() => window.location.href = '/dashboard?tab=connectors'}
+                  className="bg-primary-500 hover:bg-primary-600"
+                >
+                  <Mail className="w-4 h-4 mr-2" />
+                  Connecter un email d'abord
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={handleExtract}
+                  disabled={isExtracting || !selectedEmail || !companyId}
+                  className="bg-primary-500 hover:bg-primary-600"
+                >
+                  {isExtracting ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Download className="w-4 h-4 mr-2" />
+                  )}
+                  Lancer l'extraction
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              )}
             </div>
           </div>
         </div>
