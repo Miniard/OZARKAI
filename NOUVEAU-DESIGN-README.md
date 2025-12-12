@@ -1,4 +1,4 @@
-# 🎨 Nouveau Design ComptaPilot - Style 2015
+# 🎨 Nouveau Design Komptal - Style 2015
 
 > **Design simple, clair et smooth - Compréhensible par tous**
 
@@ -530,5 +530,5 @@ MIT License - Voir le fichier [LICENSE](LICENSE)
 
 ---
 
-**🚀 Prêt à rendre ComptaPilot encore meilleur !**
+**🚀 Prêt à rendre Komptal encore meilleur !**
 

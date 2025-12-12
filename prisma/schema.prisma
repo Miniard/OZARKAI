@@ -1,4 +1,4 @@
-// Schéma de base de données ComptaPilot
+// Schéma de base de données Komptal
 generator client {
   provider = "prisma-client-js"
 }

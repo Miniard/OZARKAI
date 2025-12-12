@@ -1,6 +1,6 @@
-# 🚀 Guide d'Installation ComptaPilot
+# 🚀 Guide d'Installation Komptal
 
-Guide pas à pas pour installer et configurer ComptaPilot sur votre machine locale.
+Guide pas à pas pour installer et configurer Komptal sur votre machine locale.
 
 ---
 
@@ -16,8 +16,8 @@ Assurez-vous d'avoir installé :
 ### 2. Cloner le projet
 
 ```bash
-git clone https://github.com/votre-repo/comptapilot.git
-cd comptapilot
+git clone https://github.com/votre-repo/komptal.git
+cd komptal
 ```
 
 ### 3. Installer les dépendances
@@ -42,7 +42,7 @@ copy .env.local.example .env.local
 
 ```bash
 # Base de données (adapter selon votre config PostgreSQL)
-DATABASE_URL="postgresql://postgres:postgres@localhost:5432/comptapilot?schema=public"
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/komptal?schema=public"
 
 # Secret NextAuth (générer avec la commande ci-dessous)
 NEXTAUTH_SECRET="votre-secret-ici"
@@ -65,18 +65,18 @@ openssl rand -base64 32
 
 **Sur Linux/Mac :**
 ```bash
-createdb comptapilot
+createdb komptal
 ```
 
 **Sur Windows (PowerShell) :**
 ```powershell
 # Option 1 : Commande directe
-psql -U postgres -c "CREATE DATABASE comptapilot;"
+psql -U postgres -c "CREATE DATABASE komptal;"
 
 # Option 2 : Avec psql interactif
 psql -U postgres
 # Puis dans psql :
-CREATE DATABASE comptapilot;
+CREATE DATABASE komptal;
 \q
 ```
 
@@ -84,7 +84,7 @@ CREATE DATABASE comptapilot;
 1. Ouvrir pgAdmin
 2. Clic droit sur "Databases"
 3. Create > Database
-4. Nom : `comptapilot`
+4. Nom : `komptal`
 5. Cliquer "Save"
 
 **Avec Docker (recommandé) :**
@@ -122,7 +122,7 @@ Pour activer l'upload de documents :
 ```bash
 S3_ENDPOINT="https://your-account.r2.cloudflarestorage.com"
 S3_REGION="auto"
-S3_BUCKET_NAME="comptapilot-documents"
+S3_BUCKET_NAME="komptal-documents"
 S3_ACCESS_KEY_ID="your-access-key"
 S3_SECRET_ACCESS_KEY="your-secret-key"
 ```
@@ -218,7 +218,7 @@ Ouvre une interface graphique pour explorer la base de données.
 
 ```bash
 # Avec Docker
-docker exec -it comptapilot-ollama ollama run mistral:7b "Bonjour, comment vas-tu?"
+docker exec -it komptal-ollama ollama run mistral:7b "Bonjour, comment vas-tu?"
 
 # Sans Docker
 ollama run mistral:7b "Bonjour, comment vas-tu?"
@@ -260,7 +260,7 @@ node test-openai.js
 3. Testez la connexion :
 
 ```bash
-psql postgresql://user:password@localhost:5432/comptapilot
+psql postgresql://user:password@localhost:5432/komptal
 ```
 
 ### Erreur : "Prisma schema not found"
@@ -324,9 +324,9 @@ ollama:
 ## 🆘 Besoin d'Aide ?
 
 - 📖 Consultez le [README.md](README.md)
-- 🐛 Ouvrez une [issue GitHub](https://github.com/votre-repo/comptapilot/issues)
+- 🐛 Ouvrez une [issue GitHub](https://github.com/votre-repo/komptal/issues)
 - 💬 Discord : [lien vers serveur]
-- 📧 Email : contact@comptapilot.fr
+- 📧 Email : contact@komptal.fr
 
 ---
 

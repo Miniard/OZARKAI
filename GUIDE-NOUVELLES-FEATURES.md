@@ -200,7 +200,7 @@ Au **premier login** d'un nouvel utilisateur
 ### **Ce que ça fait :**
 ```
 ÉTAPE 1/5 : 🎉 Bienvenue
-→ Explication de ComptaPilot
+→ Explication de Komptal
 
 ÉTAPE 2/5 : 🏢 Votre entreprise
 → Nom, type (Micro/SARL/etc), régime TVA

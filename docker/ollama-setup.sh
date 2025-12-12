@@ -2,7 +2,7 @@
 
 # Script pour installer et configurer Ollama avec Mistral 7B
 
-echo "🚀 Configuration d'Ollama pour ComptaPilot"
+echo "🚀 Configuration d'Ollama pour Komptal"
 echo "=========================================="
 
 # Démarrer Ollama
@@ -15,7 +15,7 @@ sleep 30
 
 # Télécharger le modèle Mistral 7B
 echo "3. Téléchargement du modèle Mistral 7B..."
-docker exec comptapilot-ollama ollama pull mistral:7b
+docker exec komptal-ollama ollama pull mistral:7b
 
 echo ""
 echo "✅ Configuration terminée !"
@@ -24,5 +24,5 @@ echo "Ollama est maintenant disponible sur http://localhost:11434"
 echo "Modèle installé : mistral:7b"
 echo ""
 echo "Pour tester :"
-echo "  docker exec -it comptapilot-ollama ollama run mistral:7b"
+echo "  docker exec -it komptal-ollama ollama run mistral:7b"
 

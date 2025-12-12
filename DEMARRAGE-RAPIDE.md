@@ -17,7 +17,7 @@ http://localhost:3000/demo-flat
 
 ### Option B : Lancer le serveur
 ```bash
-cd "C:\Users\Adam Adam\Desktop\OZARKAI"
+cd "C:\Users\Adam Adam\Desktop\Komptal"
 npm run dev
 ```
 

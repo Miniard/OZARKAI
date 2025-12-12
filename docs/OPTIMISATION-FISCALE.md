@@ -342,5 +342,5 @@ Total net dirigeant : 50 000 (salaire) + 50 400 (dividendes) = 100 400 €
 
 ---
 
-**Avec ComptaPilot, obtenez une analyse personnalisée en quelques clics ! 🚀**
+**Avec Komptal, obtenez une analyse personnalisée en quelques clics ! 🚀**
 

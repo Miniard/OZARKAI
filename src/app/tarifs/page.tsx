@@ -20,7 +20,7 @@ export default function TarifsPage() {
     }
 
     // TODO: Intégrer Stripe
-    alert('🚀 Intégration Stripe à venir ! Pour l\'instant, contactez-nous : contact@comptapilot.fr');
+    alert('🚀 Intégration Stripe à venir ! Pour l\'instant, contactez-nous : contact@komptal.fr');
   };
 
   return (

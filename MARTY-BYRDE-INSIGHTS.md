@@ -261,11 +261,11 @@ Chaque insight inclut une **💡 Recommandation** concrète pour résoudre le pr
 
 > "The less you know, the better off you are."
 > 
-> Mais avec ComptaPilot, **plus vous savez, mieux vous pilotez** ! 🚀
+> Mais avec Komptal, **plus vous savez, mieux vous pilotez** ! 🚀
 
 Notre système détecte ce que même les experts manqueraient, et vous donne les clés pour une comptabilité **irréprochable** et **optimisée**.
 
 ---
 
-**Créé avec 💙 par l'équipe ComptaPilot**
+**Créé avec 💙 par l'équipe Komptal**
 

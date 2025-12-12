@@ -1,4 +1,4 @@
-# 📋 Résumé des Modifications - ComptaPilot Design 2015
+# 📋 Résumé des Modifications - Komptal Design 2015
 
 ## 🎯 Ce qui a été fait
 
@@ -226,7 +226,7 @@ import { DeadlineCalendar } from '@/components/calendar/DeadlineCalendar';
 ## 📁 Structure des Fichiers Créés
 
 ```
-comptapilot/
+komptal/
 ├── src/
 │   ├── app/
 │   │   ├── globals-flat.css           ✅ NOUVEAU - CSS Flat 2015

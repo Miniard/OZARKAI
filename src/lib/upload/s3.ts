@@ -15,7 +15,7 @@ const s3Client = new S3Client({
   },
 });
 
-const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'comptapilot-documents';
+const BUCKET_NAME = process.env.S3_BUCKET_NAME || 'komptal-documents';
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 const ALLOWED_MIME_TYPES = [
   'application/pdf',

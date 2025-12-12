@@ -1,6 +1,6 @@
-# 📄 Factures de Test pour ComptaPilot
+# 📄 Factures de Test pour Komptal
 
-Ce dossier contient **5 factures de test** pour tester toutes les fonctionnalités de ComptaPilot.
+Ce dossier contient **5 factures de test** pour tester toutes les fonctionnalités de Komptal.
 
 ---
 

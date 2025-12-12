@@ -1,4 +1,4 @@
-# 🪟 Installation Windows - ComptaPilot
+# 🪟 Installation Windows - Komptal
 
 Guide spécifique pour Windows 10/11
 
@@ -27,8 +27,8 @@ Guide spécifique pour Windows 10/11
 ```powershell
 # Ouvrir PowerShell ou Windows Terminal
 cd Desktop
-git clone https://github.com/votre-repo/comptapilot.git
-cd comptapilot
+git clone https://github.com/votre-repo/komptal.git
+cd komptal
 ```
 
 ### 3. Installer les dépendances
@@ -53,7 +53,7 @@ notepad .env.local
 
 ```env
 # Adapter avec votre mot de passe PostgreSQL
-DATABASE_URL="postgresql://postgres:VOTRE_MOT_DE_PASSE@localhost:5432/comptapilot?schema=public"
+DATABASE_URL="postgresql://postgres:VOTRE_MOT_DE_PASSE@localhost:5432/komptal?schema=public"
 
 # Générer avec : node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 NEXTAUTH_URL="http://localhost:3000"
@@ -84,7 +84,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 2. Entrer le mot de passe `postgres`
 3. Dans le panneau gauche : Clic droit sur "Databases"
 4. Sélectionner "Create" > "Database..."
-5. Nom : `comptapilot`
+5. Nom : `komptal`
 6. Cliquer "Save"
 
 **Option B : Avec PowerShell**
@@ -94,14 +94,14 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 psql -U postgres
 
 # Dans psql, taper :
-CREATE DATABASE comptapilot;
+CREATE DATABASE komptal;
 \q
 ```
 
 **Option C : Une ligne PowerShell**
 
 ```powershell
-psql -U postgres -c "CREATE DATABASE comptapilot;"
+psql -U postgres -c "CREATE DATABASE komptal;"
 # Entrer le mot de passe quand demandé
 ```
 
@@ -134,14 +134,14 @@ https://www.docker.com/products/docker-desktop/
 ### 2. Lancer PostgreSQL
 
 ```powershell
-# Dans le dossier comptapilot
+# Dans le dossier komptal
 docker-compose up -d postgres
 ```
 
 ### 3. Utiliser cette DATABASE_URL
 
 ```env
-DATABASE_URL="postgresql://comptapilot:comptapilot_password@localhost:5432/comptapilot?schema=public"
+DATABASE_URL="postgresql://komptal:komptal_password@localhost:5432/komptal?schema=public"
 ```
 
 ### 4. Continuer normalement
@@ -251,7 +251,7 @@ npm run start
 - [ ] Projet cloné
 - [ ] `npm install` exécuté
 - [ ] `.env.local` créé et configuré
-- [ ] Base de données `comptapilot` créée
+- [ ] Base de données `komptal` créée
 - [ ] `npx prisma db push` exécuté avec succès
 - [ ] `npm run dev` lance l'app
 - [ ] http://localhost:3000 accessible

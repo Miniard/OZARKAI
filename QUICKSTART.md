@@ -1,4 +1,4 @@
-# ⚡ QuickStart ComptaPilot
+# ⚡ QuickStart Komptal
 
 Démarrage rapide en 5 minutes !
 
@@ -22,15 +22,15 @@ cp .env.local.example .env.local
 # 4. Créer la base de données
 
 # Sur Linux/Mac :
-createdb comptapilot
+createdb komptal
 
 # Sur Windows (PowerShell) - RECOMMANDÉ :
-psql -U postgres -c "CREATE DATABASE comptapilot;"
+psql -U postgres -c "CREATE DATABASE komptal;"
 
 # Ou avec pgAdmin (interface graphique) :
 # 1. Ouvrir pgAdmin
 # 2. Clic droit sur "Databases" > Create > Database
-# 3. Nom : comptapilot
+# 3. Nom : komptal
 
 # Ou avec Docker :
 docker-compose up -d postgres
@@ -51,7 +51,7 @@ npm run dev
 - [ ] Node.js 18+ installé
 - [ ] PostgreSQL installé et lancé
 - [ ] `.env.local` créé et configuré
-- [ ] Base de données `comptapilot` créée
+- [ ] Base de données `komptal` créée
 - [ ] Prisma initialisé (`npx prisma db push`)
 - [ ] Application lancée (`npm run dev`)
 
@@ -63,7 +63,7 @@ npm run dev
 # Dans .env.local
 
 # 1. Base de données PostgreSQL
-DATABASE_URL="postgresql://user:password@localhost:5432/comptapilot?schema=public"
+DATABASE_URL="postgresql://user:password@localhost:5432/komptal?schema=public"
 
 # 2. NextAuth secret (générer avec : openssl rand -base64 32)
 NEXTAUTH_URL="http://localhost:3000"
@@ -169,7 +169,7 @@ npx prisma generate      # Régénérer client Prisma
 # Docker
 docker-compose up -d           # Lancer PostgreSQL + Ollama
 docker-compose down            # Arrêter tous les services
-docker logs comptapilot-ollama # Voir logs Ollama
+docker logs komptal-ollama # Voir logs Ollama
 
 # Build production
 npm run build            # Builder l'app
@@ -200,8 +200,8 @@ Vérifier que `OPENAI_API_KEY` est bien dans `.env.local` et que vous avez des c
 ### Ollama ne répond pas
 
 ```bash
-docker restart comptapilot-ollama
-docker exec comptapilot-ollama ollama pull mistral:7b
+docker restart komptal-ollama
+docker exec komptal-ollama ollama pull mistral:7b
 ```
 
 ---
@@ -216,7 +216,7 @@ docker exec comptapilot-ollama ollama pull mistral:7b
 
 ## 🎉 C'est Parti !
 
-Vous êtes prêt à utiliser ComptaPilot !
+Vous êtes prêt à utiliser Komptal !
 
 **Prochaines étapes :**
 

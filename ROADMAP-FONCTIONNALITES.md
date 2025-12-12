@@ -1,4 +1,4 @@
-# 🗺️ Roadmap des Fonctionnalités - ComptaPilot
+# 🗺️ Roadmap des Fonctionnalités - Komptal
 
 ## 📅 Vue d'Ensemble
 
@@ -616,7 +616,7 @@ Pour toute question sur cette roadmap :
 
 ---
 
-**🚀 Prêt à construire l'avenir de ComptaPilot !**
+**🚀 Prêt à construire l'avenir de Komptal !**
 
 *Cette roadmap est un document vivant, à mettre à jour régulièrement.*
 

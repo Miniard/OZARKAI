@@ -1,8 +1,8 @@
-# 🤖 ComptaPilot
+# 🤖 Komptal
 
 **IA comptable intelligente pour TPE et cabinets comptables**
 
-ComptaPilot est une application web complète qui utilise l'intelligence artificielle pour simplifier la comptabilité des TPE. Upload de factures, analyse automatique, chat avec un expert-comptable virtuel, et tableau de bord financier intuitif.
+Komptal est une application web complète qui utilise l'intelligence artificielle pour simplifier la comptabilité des TPE. Upload de factures, analyse automatique, chat avec un expert-comptable virtuel, et tableau de bord financier intuitif.
 
 ---
 
@@ -24,7 +24,7 @@ ComptaPilot est une application web complète qui utilise l'intelligence artific
 ## 🏗️ Architecture
 
 ```
-ComptaPilot/
+Komptal/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── api/               # API Routes
@@ -73,8 +73,8 @@ ComptaPilot/
 ### 1. Cloner le repository
 
 ```bash
-git clone https://github.com/votre-repo/comptapilot.git
-cd comptapilot
+git clone https://github.com/votre-repo/komptal.git
+cd komptal
 ```
 
 ### 2. Installer les dépendances
@@ -89,7 +89,7 @@ Créez un fichier `.env.local` à la racine :
 
 ```bash
 # Database
-DATABASE_URL="postgresql://user:password@localhost:5432/comptapilot?schema=public"
+DATABASE_URL="postgresql://user:password@localhost:5432/komptal?schema=public"
 
 # NextAuth
 NEXTAUTH_URL="http://localhost:3000"
@@ -105,7 +105,7 @@ USE_LOCAL_MODEL="false"
 # S3 / Cloudflare R2
 S3_ENDPOINT="https://..."
 S3_REGION="auto"
-S3_BUCKET_NAME="comptapilot-documents"
+S3_BUCKET_NAME="komptal-documents"
 S3_ACCESS_KEY_ID="..."
 S3_SECRET_ACCESS_KEY="..."
 
@@ -203,7 +203,7 @@ Le tableau de bord affiche :
 
 ## 🔐 Sécurité
 
-ComptaPilot implémente plusieurs couches de sécurité :
+Komptal implémente plusieurs couches de sécurité :
 
 ### Anonymisation des données
 
@@ -260,7 +260,7 @@ npx tsc --noEmit
 
 ```bash
 # Build l'image
-docker build -t comptapilot .
+docker build -t komptal .
 
 # Lancer avec docker-compose (inclut PostgreSQL)
 docker-compose up -d
@@ -397,13 +397,13 @@ docker-compose up -d postgres
 
 ```bash
 # Vérifier le statut
-docker logs comptapilot-ollama
+docker logs komptal-ollama
 
 # Redémarrer
 docker-compose restart ollama
 
 # Réinstaller le modèle
-docker exec comptapilot-ollama ollama pull mistral:7b
+docker exec komptal-ollama ollama pull mistral:7b
 ```
 
 ### Erreur Prisma
@@ -432,7 +432,7 @@ Les contributions sont les bienvenues ! Ouvrez une issue ou une pull request.
 
 ## 📧 Contact
 
-Pour toute question : contact@comptapilot.fr
+Pour toute question : contact@komptal.fr
 
 ---
 

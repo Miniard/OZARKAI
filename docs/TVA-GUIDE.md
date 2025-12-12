@@ -90,7 +90,7 @@ Exemple : Tu vends un service à un client :
 
 ---
 
-## 📊 Dans ComptaPilot
+## 📊 Dans Komptal
 
 ### Comment on calcule ta TVA récupérable ?
 
@@ -168,7 +168,7 @@ TVA à payer = 1 300 € - 587,65 € = 712,35 €
 
 ---
 
-## 🚀 Avec ComptaPilot
+## 🚀 Avec Komptal
 
 ### On t'aide à :
 1. ✅ **Identifier** les factures avec TVA récupérable
