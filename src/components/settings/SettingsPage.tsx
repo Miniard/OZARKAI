@@ -342,8 +342,8 @@ export function SettingsPage() {
       {/* Sécurité */}
       <Card padding="lg">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-emerald-500" />
+          <div className="w-10 h-10 rounded-xl bg-primary-50 flex items-center justify-center">
+            <Shield className="w-5 h-5 text-primary-500" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Sécurité</h2>
@@ -351,7 +351,7 @@ export function SettingsPage() {
           </div>
         </div>
 
-        <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl">
+        <div className="p-4 bg-primary-50 border border-primary-200 rounded-xl">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
               <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -362,8 +362,8 @@ export function SettingsPage() {
               </svg>
             </div>
             <div>
-              <p className="font-medium text-emerald-800">Connecté via Google</p>
-              <p className="text-sm text-emerald-600">Votre compte est sécurisé par Google</p>
+              <p className="font-medium text-primary-800">Connecté via Google</p>
+              <p className="text-sm text-primary-600">Votre compte est sécurisé par Google</p>
             </div>
           </div>
         </div>

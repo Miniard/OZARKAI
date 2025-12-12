@@ -190,7 +190,7 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
 
   // Générer couleur vendeur
   const getVendorColor = (name: string) => {
-    const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
+    const colors = ['bg-blue-500', 'bg-primary-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
     const index = name ? name.charCodeAt(0) % colors.length : 0;
     return colors[index];
   };

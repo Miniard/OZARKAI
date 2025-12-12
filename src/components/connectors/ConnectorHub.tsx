@@ -177,7 +177,7 @@ export function ConnectorHub({ companyId, onDocumentsImported }: ConnectorHubPro
         <div className="relative" ref={dropdownRef}>
           <Button
             onClick={() => setShowAddDropdown(!showAddDropdown)}
-            className="bg-emerald-500 hover:bg-emerald-600"
+            className="bg-primary-500 hover:bg-primary-600"
           >
             <Plus className="w-4 h-4 mr-2" />
             Add an account
@@ -262,7 +262,7 @@ export function ConnectorHub({ companyId, onDocumentsImported }: ConnectorHubPro
                     <button
                       onClick={() => toggleAccount(account.id)}
                       className={`w-11 h-6 rounded-full transition-colors relative ${
-                        account.enabled ? 'bg-emerald-500' : 'bg-slate-300'
+                        account.enabled ? 'bg-primary-500' : 'bg-slate-300'
                       }`}
                     >
                       <div className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${

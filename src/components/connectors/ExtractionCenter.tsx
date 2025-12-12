@@ -368,7 +368,7 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
             )}
             
             {success && (
-              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-sm text-emerald-700">
+              <div className="mb-4 p-3 bg-primary-50 border border-primary-200 rounded-lg flex items-center gap-2 text-sm text-primary-700">
                 <CheckCircle className="w-4 h-4" />
                 {success}
               </div>
@@ -429,7 +429,7 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
                       <span className="text-sm font-medium text-slate-900">{extraction.dateRange}</span>
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
                         extraction.status === 'completed' 
-                          ? 'bg-emerald-100 text-emerald-700' 
+                          ? 'bg-primary-100 text-primary-700' 
                           : extraction.status === 'pending'
                           ? 'bg-amber-100 text-amber-700'
                           : 'bg-red-100 text-red-700'
@@ -480,7 +480,7 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
                     <td className="px-4 py-3 text-sm text-slate-600">{extraction.email}</td>
                     <td className="px-4 py-3">
                       <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        extraction.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                        extraction.status === 'completed' ? 'bg-primary-100 text-primary-700' : 'bg-red-100 text-red-700'
                       }`}>
                         {extraction.status === 'completed' ? 'Complété' : 'Échoué'}
                       </span>

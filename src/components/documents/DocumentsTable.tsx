@@ -134,7 +134,7 @@ export function DocumentsTable({
     const colors = [
       { bg: 'bg-cyan-500', text: 'text-white' },
       { bg: 'bg-red-500', text: 'text-white' },
-      { bg: 'bg-emerald-500', text: 'text-white' },
+      { bg: 'bg-primary-500', text: 'text-white' },
       { bg: 'bg-orange-500', text: 'text-white' },
       { bg: 'bg-purple-500', text: 'text-white' },
       { bg: 'bg-blue-500', text: 'text-white' },
@@ -263,7 +263,7 @@ export function DocumentsTable({
                   {/* Payment Status */}
                   <td className="px-3 py-3">
                     {isPaid ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-emerald-100 text-emerald-700 text-xs font-medium">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary-100 text-primary-700 text-xs font-medium">
                         <Check className="w-3 h-3" />
                         Paid
                       </span>

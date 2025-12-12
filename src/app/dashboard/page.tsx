@@ -13,7 +13,6 @@ import { UploadDocumentModern } from '@/components/UploadDocumentModern';
 import { DocumentDetail } from '@/components/DocumentDetail';
 import { DocumentsTable } from '@/components/documents/DocumentsTable';
 import { SettingsPage } from '@/components/settings/SettingsPage';
-import { TeamsPage } from '@/components/teams/TeamsPage';
 import { ConnectorHub } from '@/components/connectors/ConnectorHub';
 import { ExtractionCenter } from '@/components/connectors/ExtractionCenter';
 import { WhatsAppSetup } from '@/components/whatsapp/WhatsAppSetup';
@@ -22,15 +21,11 @@ import { Card } from '@/components/ui/Card';
 import { 
   Search, 
   FileText,
-  ChevronDown,
   SlidersHorizontal,
   RefreshCw,
   Building2,
-  Plus,
-  Settings,
-  Check
+  List
 } from 'lucide-react';
-import { useRef } from 'react';
 
 // Types pour les filtres
 type DocumentFilter = 'all' | 'to_export' | 'exported' | 'to_review' | 'recent';
@@ -53,19 +48,6 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<DocumentFilter>('all');
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
-  const orgDropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close org dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (orgDropdownRef.current && !orgDropdownRef.current.contains(event.target as Node)) {
-        setShowOrgDropdown(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
 
   // Auth Check
   useEffect(() => {
@@ -164,8 +146,7 @@ export default function DashboardPage() {
     connectors: { title: 'Email', subtitle: 'Connectez vos boîtes mail' },
     extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures par plage de dates' },
     documents: { title: 'Accounting documents', subtitle: 'All receipts and invoices (paid and unpaid) ready for reconciliation' },
-    teams: { title: 'Équipes', subtitle: 'Collaborez avec vos collègues' },
-    settings: { title: 'Paramètres', subtitle: 'Gérez votre compte' },
+    settings: { title: 'Paramètres', subtitle: 'Gérez votre compte et vos organisations' },
     billing: { title: 'Facturation', subtitle: 'Gérez votre abonnement' },
     help: { title: 'Aide', subtitle: 'Obtenez de l\'aide' },
     security: { title: 'Sécurité', subtitle: 'Gérez la sécurité de votre compte' },
@@ -209,28 +190,13 @@ export default function DashboardPage() {
         setActiveTab={setActiveTab}
         userEmail={session.user?.email}
         userName={session.user?.name}
+        companies={companies}
+        selectedCompanyId={selectedCompanyId}
+        setSelectedCompanyId={setSelectedCompanyId}
       />
 
       {/* Main Content Area */}
       <div className="ml-20 lg:ml-64 transition-all duration-300 bg-slate-50 min-h-screen">
-        {/* Top Bar */}
-        <div className="bg-emerald-600 h-12 flex items-center justify-between px-6">
-          <div className="flex items-center gap-3">
-            {/* Organization Selector */}
-            <div className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg cursor-pointer transition-colors">
-              <div className="w-6 h-6 bg-amber-500 rounded flex items-center justify-center">
-                <span className="text-white text-xs font-bold">
-                  {companies.find(c => c.id === selectedCompanyId)?.name?.charAt(0) || 'E'}
-                </span>
-              </div>
-              <span className="text-white text-sm font-medium">
-                {companies.find(c => c.id === selectedCompanyId)?.name || 'Mon Entreprise'}
-              </span>
-              <ChevronDown className="w-4 h-4 text-white/70" />
-            </div>
-          </div>
-        </div>
-
         {/* Page Header */}
         <header className="bg-white border-b border-slate-200">
           <div className="px-6 lg:px-8 py-5">
@@ -450,9 +416,6 @@ export default function DashboardPage() {
                 )}
               </div>
             )}
-
-            {/* TEAMS VIEW */}
-            {activeTab === 'teams' && <TeamsPage />}
 
             {/* SETTINGS VIEW */}
             {activeTab === 'settings' && <SettingsPage />}

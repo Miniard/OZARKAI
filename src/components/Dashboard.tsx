@@ -133,12 +133,12 @@ export function Dashboard({ companyId }: DashboardProps) {
     <div className="space-y-6">
       {/* Alerte documents non analysés */}
       {unanalyzedCount > 0 && (
-        <Card className="bg-emerald-50 border border-emerald-200">
+        <Card className="bg-primary-50 border border-primary-200">
           <CardContent className="py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-emerald-200 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-emerald-600" />
+                <div className="w-10 h-10 rounded-xl bg-white border border-primary-200 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-primary-600" />
                 </div>
                 <div>
                   <p className="font-semibold text-slate-900">
@@ -152,7 +152,7 @@ export function Dashboard({ companyId }: DashboardProps) {
               <Button 
                 onClick={handleAnalyzeAll}
                 disabled={isAnalyzingAll}
-                className="bg-emerald-500 hover:bg-emerald-600"
+                className="bg-primary-500 hover:bg-primary-600"
               >
                 {isAnalyzingAll ? (
                   <>
@@ -176,10 +176,10 @@ export function Dashboard({ companyId }: DashboardProps) {
         <CardContent className="py-12">
           <div className="text-center">
             <p className="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Solde actuel</p>
-            <div className={`text-5xl lg:text-6xl font-bold mb-6 ${data.balance >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+            <div className={`text-5xl lg:text-6xl font-bold mb-6 ${data.balance >= 0 ? 'text-primary-500' : 'text-red-500'}`}>
               {formatCurrency(data.balance)}
             </div>
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${data.balance >= 0 ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
+            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${data.balance >= 0 ? 'border-primary-200 bg-primary-50 text-primary-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
               {data.balance >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
               <span className="text-sm font-medium">
                 {data.balance >= 0 
@@ -199,7 +199,7 @@ export function Dashboard({ companyId }: DashboardProps) {
             <p className="text-sm text-slate-500 mb-1">Revenus du mois</p>
             <div className="flex items-center justify-between">
               <p className="text-2xl font-bold text-slate-900">{formatCurrency(data.revenue)}</p>
-              <TrendingUp className="w-5 h-5 text-emerald-500" />
+              <TrendingUp className="w-5 h-5 text-success-500" />
             </div>
           </CardContent>
         </Card>
@@ -221,8 +221,8 @@ export function Dashboard({ companyId }: DashboardProps) {
             <p className="text-sm text-slate-500 mb-1">TVA collectée</p>
             <div className="flex items-center justify-between">
               <p className="text-2xl font-bold text-slate-900">{formatCurrency(data.vat)}</p>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <Receipt className="w-4 h-4 text-emerald-600" />
+              <div className="w-8 h-8 rounded-lg bg-warning-50 flex items-center justify-center">
+                <Receipt className="w-4 h-4 text-warning-600" />
               </div>
             </div>
           </CardContent>
@@ -234,8 +234,8 @@ export function Dashboard({ companyId }: DashboardProps) {
             <p className="text-sm text-slate-500 mb-1">Documents</p>
             <div className="flex items-center justify-between">
               <p className="text-2xl font-bold text-slate-900">{data.recentDocuments?.length || 0}</p>
-              <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <FileText className="w-4 h-4 text-emerald-600" />
+              <div className="w-8 h-8 rounded-lg bg-primary-50 flex items-center justify-center">
+                <FileText className="w-4 h-4 text-primary-600" />
               </div>
             </div>
           </CardContent>
