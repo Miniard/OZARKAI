@@ -218,21 +218,6 @@ export function UploadDocumentModern({ companyId, onUploadComplete }: UploadDocu
         </div>
       </Card>
 
-      {/* AI Notice */}
-      <Card padding="md" className="bg-primary-50 border-primary-100">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-5 h-5 text-primary-500" />
-          </div>
-          <div>
-            <h4 className="font-medium text-primary-900 mb-0.5">Analyse IA instantanée ⚡</h4>
-            <p className="text-sm text-primary-700">
-              Déposez vos fichiers - l'IA analyse automatiquement en arrière-plan (montant, date, fournisseur, TVA...)
-            </p>
-          </div>
-        </div>
-      </Card>
-
       {/* Files List */}
       {files.length > 0 && (
         <Card padding="none">

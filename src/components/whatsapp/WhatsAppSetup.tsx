@@ -181,7 +181,7 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
               </li>
               <li className="flex items-start gap-3">
                 <span className="w-6 h-6 bg-green-100 rounded-full flex items-center justify-center text-xs font-bold text-green-700 shrink-0">3</span>
-                <span>L'IA analyse et importe automatiquement ! 🤖</span>
+                <span>C'est importé automatiquement !</span>
               </li>
             </ol>
           </div>
@@ -240,8 +240,8 @@ export function WhatsAppSetup({ onSetupComplete }: WhatsAppSetupProps) {
               <Zap className="w-5 h-5 text-green-600" />
             </div>
             <div>
-              <p className="font-medium text-slate-900 text-sm">Analyse auto</p>
-              <p className="text-xs text-slate-500">L'IA extrait les données</p>
+              <p className="font-medium text-slate-900 text-sm">Import auto</p>
+              <p className="text-xs text-slate-500">Données extraites automatiquement</p>
             </div>
           </div>
           <div className="flex items-start gap-3 p-4 bg-slate-50 rounded-xl">

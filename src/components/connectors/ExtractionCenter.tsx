@@ -120,6 +120,18 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
       return;
     }
 
+    // Validation des dates personnalisées
+    if (dateRange === 'custom') {
+      if (!customStartDate || !customEndDate) {
+        setError('Veuillez sélectionner les dates de début et de fin');
+        return;
+      }
+      if (new Date(customStartDate) > new Date(customEndDate)) {
+        setError('La date de début doit être antérieure à la date de fin');
+        return;
+      }
+    }
+
     const emailAccount = connectedEmails.find(e => e.email === selectedEmail);
     if (!emailAccount) return;
 

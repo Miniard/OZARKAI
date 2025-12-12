@@ -23,8 +23,7 @@ import {
   FileText,
   SlidersHorizontal,
   RefreshCw,
-  Building2,
-  List
+  Building2
 } from 'lucide-react';
 
 // Types pour les filtres
@@ -281,11 +280,6 @@ export default function DashboardPage() {
                   <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white">
                     <span className="text-slate-400">:</span>
                     Actions
-                  </button>
-
-                  {/* View Toggle */}
-                  <button className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors bg-white">
-                    <List className="w-4 h-4" />
                   </button>
                 </div>
               </div>

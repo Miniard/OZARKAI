@@ -116,11 +116,11 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                 <div className="grid md:grid-cols-3 gap-4 mt-8">
                   <div className="p-4 bg-dark-800 rounded-lg">
                     <Bot className="w-8 h-8 text-primary-400 mx-auto mb-2" />
-                    <p className="text-sm text-white font-semibold">Analyse IA automatique</p>
+                    <p className="text-sm text-white font-semibold">Import automatique</p>
                   </div>
                   <div className="p-4 bg-dark-800 rounded-lg">
                     <TrendingUp className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                    <p className="text-sm text-white font-semibold">Prédictions de trésorerie</p>
+                    <p className="text-sm text-white font-semibold">Suivi en temps réel</p>
                   </div>
                   <div className="p-4 bg-dark-800 rounded-lg">
                     <Sparkles className="w-8 h-8 text-yellow-400 mx-auto mb-2" />
@@ -240,7 +240,7 @@ export function OnboardingWizard({ onComplete }: OnboardingWizardProps) {
                   Avez-vous des factures à uploader ?
                 </h3>
                 <p className="text-gray-400 max-w-lg mx-auto">
-                  L'IA analysera automatiquement vos factures pour extraire les montants, dates, fournisseurs, et catégories comptables.
+                  Importez vos factures pour extraire les montants, dates, fournisseurs et catégories comptables.
                 </p>
                 <div className="grid md:grid-cols-2 gap-4 max-w-md mx-auto">
                   <button
