@@ -1,13 +1,12 @@
 /**
- * ExtractionCenter - Centre d'extraction des factures avec plage de dates
- * Permet au client de choisir une période pour récupérer ses factures
+ * ExtractionCenter - Style Receptor AI
+ * Extraction rétroactive avec sélection de comptes et plages de dates
  */
 
 'use client';
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import {
   Calendar,
   Mail,
@@ -16,25 +15,21 @@ import {
   CheckCircle,
   AlertCircle,
   FileText,
-  RefreshCw,
-  Filter,
-  Search,
-  Sparkles,
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Settings,
+  ArrowRight,
   Clock
 } from 'lucide-react';
 
-interface Email {
+interface Extraction {
   id: string;
-  subject: string;
-  from: string;
-  date: string;
-  attachmentCount: number;
-  attachments: {
-    id: string;
-    filename: string;
-    mimeType: string;
-    size: number;
-  }[];
+  dateRange: string;
+  email: string;
+  status: 'completed' | 'pending' | 'failed';
+  documentCount: number;
+  createdAt: string;
 }
 
 interface ExtractionCenterProps {
@@ -43,53 +38,54 @@ interface ExtractionCenterProps {
 }
 
 export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionCenterProps) {
-  // États pour les connexions
-  const [gmailConnected, setGmailConnected] = useState(false);
-  const [outlookConnected, setOutlookConnected] = useState(false);
+  // États connexions
+  const [connectedEmails, setConnectedEmails] = useState<{email: string; source: 'gmail' | 'outlook'}[]>([]);
+  const [selectedEmail, setSelectedEmail] = useState<string | null>(null);
   const [isCheckingConnections, setIsCheckingConnections] = useState(true);
   
-  // États pour la plage de dates
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  // État extraction
+  const [dateRange, setDateRange] = useState('12months');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
   
-  // États pour le scan
-  const [isScanning, setIsScanning] = useState(false);
-  const [scanResults, setScanResults] = useState<Email[]>([]);
-  const [selectedEmails, setSelectedEmails] = useState<Set<string>>(new Set());
+  // États process
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState({ current: 0, total: 0 });
   
-  // États pour l'import
-  const [isImporting, setIsImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState({ current: 0, total: 0 });
-  const [importedCount, setImportedCount] = useState(0);
+  // Historique extractions
+  const [recentExtractions, setRecentExtractions] = useState<Extraction[]>([]);
   
-  // Message d'erreur
+  // Messages
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
 
-  // Initialiser les dates par défaut (30 derniers jours)
-  useEffect(() => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - 30);
-    
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
-  }, []);
-
-  // Vérifier les connexions au chargement
+  // Vérifier les connexions
   useEffect(() => {
     checkConnections();
   }, []);
 
   const checkConnections = async () => {
     setIsCheckingConnections(true);
+    const emails: {email: string; source: 'gmail' | 'outlook'}[] = [];
+    
     try {
       const [gmailRes, outlookRes] = await Promise.all([
         fetch('/api/gmail/status').then(r => r.json()).catch(() => ({ connected: false })),
         fetch('/api/outlook/status').then(r => r.json()).catch(() => ({ connected: false })),
       ]);
       
-      setGmailConnected(gmailRes.connected || false);
-      setOutlookConnected(outlookRes.connected || false);
+      if (gmailRes.connected && gmailRes.email) {
+        emails.push({ email: gmailRes.email, source: 'gmail' });
+      }
+      if (outlookRes.connected && outlookRes.email) {
+        emails.push({ email: outlookRes.email, source: 'outlook' });
+      }
+      
+      setConnectedEmails(emails);
+      if (emails.length > 0 && !selectedEmail) {
+        setSelectedEmail(emails[0].email);
+      }
     } catch (e) {
       console.error('Error checking connections:', e);
     } finally {
@@ -97,113 +93,86 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
     }
   };
 
-  const handleScan = async () => {
-    if (!gmailConnected && !outlookConnected) {
-      setError('Veuillez connecter au moins un compte email');
-      return;
+  // Calculer les dates selon la plage sélectionnée
+  const getDateRange = () => {
+    const end = new Date();
+    const start = new Date();
+    
+    switch (dateRange) {
+      case '7days': start.setDate(start.getDate() - 7); break;
+      case '30days': start.setDate(start.getDate() - 30); break;
+      case '3months': start.setMonth(start.getMonth() - 3); break;
+      case '6months': start.setMonth(start.getMonth() - 6); break;
+      case '12months': start.setMonth(start.getMonth() - 12); break;
+      case 'custom':
+        return { start: customStartDate, end: customEndDate };
     }
-
-    setIsScanning(true);
-    setError(null);
-    setScanResults([]);
-    setSelectedEmails(new Set());
-
-    const allEmails: Email[] = [];
-
-    try {
-      // Scanner Gmail si connecté
-      if (gmailConnected) {
-        const gmailRes = await fetch('/api/gmail/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            companyId,
-            startDate,
-            endDate,
-            maxResults: 100,
-          }),
-        });
-
-        const gmailData = await gmailRes.json();
-        
-        if (gmailData.needsReconnect) {
-          setGmailConnected(false);
-          setError('Session Gmail expirée. Veuillez reconnecter votre compte.');
-        } else if (gmailData.emails) {
-          allEmails.push(...gmailData.emails.map((e: Email) => ({ ...e, source: 'gmail' })));
-        }
-      }
-
-      // Scanner Outlook si connecté
-      if (outlookConnected) {
-        const outlookRes = await fetch('/api/outlook/scan', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            companyId,
-            startDate,
-            endDate,
-            maxResults: 100,
-          }),
-        });
-
-        const outlookData = await outlookRes.json();
-        
-        if (outlookData.needsReconnect) {
-          setOutlookConnected(false);
-          setError('Session Outlook expirée. Veuillez reconnecter votre compte.');
-        } else if (outlookData.emails) {
-          allEmails.push(...outlookData.emails.map((e: Email) => ({ ...e, source: 'outlook' })));
-        }
-      }
-
-      // Trier par date décroissante
-      allEmails.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      
-      setScanResults(allEmails);
-      
-      // Sélectionner tous par défaut
-      setSelectedEmails(new Set(allEmails.map(e => e.id)));
-
-    } catch (err) {
-      console.error('Scan error:', err);
-      setError('Erreur lors du scan des emails');
-    } finally {
-      setIsScanning(false);
-    }
+    
+    return {
+      start: start.toISOString().split('T')[0],
+      end: end.toISOString().split('T')[0]
+    };
   };
 
-  const handleImport = async () => {
-    if (selectedEmails.size === 0) {
-      setError('Veuillez sélectionner au moins un email');
+  const handleExtract = async () => {
+    if (!selectedEmail) {
+      setError('Veuillez sélectionner un compte email');
       return;
     }
 
-    setIsImporting(true);
-    setError(null);
-    setImportProgress({ current: 0, total: selectedEmails.size });
-    setImportedCount(0);
+    const emailAccount = connectedEmails.find(e => e.email === selectedEmail);
+    if (!emailAccount) return;
 
-    let totalImported = 0;
-    let current = 0;
+    setIsExtracting(true);
+    setError(null);
+    setSuccess(null);
+    setExtractionProgress({ current: 0, total: 0 });
+
+    const { start, end } = getDateRange();
 
     try {
-      for (const emailId of selectedEmails) {
-        const email = scanResults.find(e => e.id === emailId);
-        if (!email) continue;
+      // 1. Scanner les emails
+      const scanEndpoint = emailAccount.source === 'outlook' ? '/api/outlook/scan' : '/api/gmail/scan';
+      const scanRes = await fetch(scanEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyId,
+          startDate: start,
+          endDate: end,
+          maxResults: 200,
+        }),
+      });
 
-        current++;
-        setImportProgress({ current, total: selectedEmails.size });
+      const scanData = await scanRes.json();
+      
+      if (scanData.needsReconnect) {
+        setError('Session expirée. Veuillez reconnecter votre compte.');
+        setIsExtracting(false);
+        return;
+      }
 
-        // Déterminer la source
-        const source = (email as any).source || 'gmail';
-        const importEndpoint = source === 'outlook' ? '/api/outlook/import' : '/api/gmail/import';
+      const emails = scanData.emails || [];
+      if (emails.length === 0) {
+        setSuccess('Aucun email avec pièce jointe trouvé pour cette période.');
+        setIsExtracting(false);
+        return;
+      }
 
+      setExtractionProgress({ current: 0, total: emails.length });
+
+      // 2. Importer chaque email
+      const importEndpoint = emailAccount.source === 'outlook' ? '/api/outlook/import' : '/api/gmail/import';
+      let totalImported = 0;
+
+      for (let i = 0; i < emails.length; i++) {
+        setExtractionProgress({ current: i + 1, total: emails.length });
+        
         const res = await fetch(importEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            emailId: email.id,
+            emailId: emails[i].id,
             companyId,
           }),
         });
@@ -214,390 +183,336 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
         }
       }
 
-      setImportedCount(totalImported);
+      // 3. Ajouter à l'historique
+      const newExtraction: Extraction = {
+        id: Date.now().toString(),
+        dateRange: `${new Date(start).toLocaleDateString('fr-FR')} - ${new Date(end).toLocaleDateString('fr-FR')}`,
+        email: selectedEmail,
+        status: 'completed',
+        documentCount: totalImported,
+        createdAt: new Date().toISOString(),
+      };
+      setRecentExtractions(prev => [newExtraction, ...prev]);
+
+      setSuccess(`${totalImported} document${totalImported > 1 ? 's' : ''} importé${totalImported > 1 ? 's' : ''} avec succès !`);
       
-      // Notifier le parent
       if (onDocumentsImported && totalImported > 0) {
         onDocumentsImported();
       }
 
-      // Vider les résultats de scan
-      setScanResults([]);
-      setSelectedEmails(new Set());
-
     } catch (err) {
-      console.error('Import error:', err);
-      setError('Erreur lors de l\'import');
+      console.error('Extraction error:', err);
+      setError('Erreur lors de l\'extraction');
     } finally {
-      setIsImporting(false);
+      setIsExtracting(false);
     }
   };
 
-  const toggleEmailSelection = (emailId: string) => {
-    const newSelection = new Set(selectedEmails);
-    if (newSelection.has(emailId)) {
-      newSelection.delete(emailId);
-    } else {
-      newSelection.add(emailId);
-    }
-    setSelectedEmails(newSelection);
-  };
-
-  const toggleSelectAll = () => {
-    if (selectedEmails.size === scanResults.length) {
-      setSelectedEmails(new Set());
-    } else {
-      setSelectedEmails(new Set(scanResults.map(e => e.id)));
-    }
-  };
-
-  const formatDate = (dateStr: string) => {
-    try {
-      return new Date(dateStr).toLocaleDateString('fr-FR', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      });
-    } catch {
-      return dateStr;
-    }
-  };
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // Presets de dates
-  const setPreset = (days: number) => {
-    const end = new Date();
-    const start = new Date();
-    start.setDate(start.getDate() - days);
-    
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
-  };
+  const dateRangeOptions = [
+    { value: '7days', label: 'Les 7 derniers jours' },
+    { value: '30days', label: 'Les 30 derniers jours' },
+    { value: '3months', label: 'Les 3 derniers mois' },
+    { value: '6months', label: 'Les 6 derniers mois' },
+    { value: '12months', label: 'Les 12 derniers mois' },
+    { value: 'custom', label: 'Période personnalisée' },
+  ];
 
   return (
-    <div className="max-w-5xl mx-auto p-6">
+    <div className="max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">
-          <span className="font-normal text-slate-500">Centre d'</span>Extraction
-        </h1>
-        <p className="text-slate-500 mt-1">
-          Sélectionnez une période pour extraire automatiquement vos factures
-        </p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            <span className="font-normal text-slate-500">Extractions rétroactives </span>
+            d'emails antérieurs
+          </h1>
+        </div>
+        <button className="flex items-center gap-2 text-sm text-slate-600 border border-slate-200 rounded-lg px-3 py-1.5 hover:bg-slate-50">
+          <span className="w-4 h-4 border border-slate-400 rounded flex items-center justify-center text-[10px]">▶</span>
+          Voir la démo
+        </button>
       </div>
 
-      {/* Status des connexions */}
-      <div className="grid md:grid-cols-2 gap-4 mb-6">
-        <div className={`flex items-center gap-3 p-4 rounded-xl border-2 ${
-          gmailConnected ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'
-        }`}>
-          <GoogleIcon size={32} />
-          <div className="flex-1">
-            <p className="font-medium text-slate-900">Gmail</p>
-            <p className="text-sm text-slate-500">
-              {isCheckingConnections ? 'Vérification...' : gmailConnected ? 'Connecté' : 'Non connecté'}
-            </p>
-          </div>
-          {gmailConnected && <CheckCircle className="w-5 h-5 text-emerald-500" />}
-        </div>
+      <div className="grid lg:grid-cols-3 gap-6">
+        {/* === COLONNE GAUCHE - Nouvelle extraction === */}
+        <div className="lg:col-span-2">
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-6">Nouvelle extraction</h2>
 
-        <div className={`flex items-center gap-3 p-4 rounded-xl border-2 ${
-          outlookConnected ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50'
-        }`}>
-          <MicrosoftIcon size={32} />
-          <div className="flex-1">
-            <p className="font-medium text-slate-900">Outlook</p>
-            <p className="text-sm text-slate-500">
-              {isCheckingConnections ? 'Vérification...' : outlookConnected ? 'Connecté' : 'Non connecté'}
-            </p>
-          </div>
-          {outlookConnected && <CheckCircle className="w-5 h-5 text-emerald-500" />}
-        </div>
-      </div>
-
-      {/* Sélection de dates */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="w-5 h-5 text-primary-500" />
-            Plage de dates
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-4 mb-4">
-            {/* Presets */}
-            <div className="flex gap-2">
-              <button
-                onClick={() => setPreset(7)}
-                className="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
-              >
-                7 jours
-              </button>
-              <button
-                onClick={() => setPreset(30)}
-                className="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
-              >
-                30 jours
-              </button>
-              <button
-                onClick={() => setPreset(90)}
-                className="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
-              >
-                3 mois
-              </button>
-              <button
-                onClick={() => setPreset(365)}
-                className="px-3 py-1.5 text-sm rounded-lg bg-slate-100 hover:bg-slate-200 transition-colors"
-              >
-                1 an
-              </button>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-4 items-end">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Date de début
+            {/* Sélection compte email */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                Compte de messagerie
               </label>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Date de fin
-              </label>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-              />
-            </div>
-
-            <Button
-              onClick={handleScan}
-              disabled={isScanning || (!gmailConnected && !outlookConnected)}
-              className="bg-primary-500 hover:bg-primary-600"
-            >
-              {isScanning ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Recherche...
-                </>
+              
+              {isCheckingConnections ? (
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Vérification des connexions...
+                </div>
+              ) : connectedEmails.length === 0 ? (
+                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
+                  <p className="text-sm text-slate-600 mb-3">Aucun compte email connecté</p>
+                  <Button variant="outline" size="sm" onClick={() => window.location.href = '/dashboard?tab=connectors'}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Connecter un compte
+                  </Button>
+                </div>
               ) : (
-                <>
-                  <Search className="w-4 h-4 mr-2" />
-                  Rechercher les factures
-                </>
+                <div className="space-y-2">
+                  {connectedEmails.map((account) => (
+                    <label
+                      key={account.email}
+                      className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                        selectedEmail === account.email
+                          ? 'border-primary-500 bg-primary-50'
+                          : 'border-slate-200 hover:border-slate-300'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="email"
+                        checked={selectedEmail === account.email}
+                        onChange={() => setSelectedEmail(account.email)}
+                        className="w-4 h-4 text-primary-600"
+                      />
+                      {account.source === 'gmail' ? <GoogleIcon size={20} /> : <MicrosoftIcon size={20} />}
+                      <span className="text-sm text-slate-700">{account.email}</span>
+                    </label>
+                  ))}
+                  <button className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 mt-2">
+                    <Plus className="w-4 h-4" />
+                    Ajouter un compte
+                  </button>
+                </div>
               )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Message d'erreur */}
-      {error && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <p className="text-red-700">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-red-500 hover:text-red-700"
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Résultats importés */}
-      {importedCount > 0 && !isImporting && (
-        <div className="mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-3">
-          <CheckCircle className="w-5 h-5 text-emerald-500" />
-          <p className="text-emerald-700">
-            <strong>{importedCount}</strong> document{importedCount > 1 ? 's' : ''} importé{importedCount > 1 ? 's' : ''} et analysé{importedCount > 1 ? 's' : ''} avec succès !
-          </p>
-        </div>
-      )}
-
-      {/* Progression de l'import */}
-      {isImporting && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-          <div className="flex items-center gap-4">
-            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
-            <div className="flex-1">
-              <p className="font-medium text-blue-900">
-                Import en cours... ({importProgress.current}/{importProgress.total})
-              </p>
-              <div className="mt-2 h-2 bg-blue-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-500 transition-all"
-                  style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
-                />
-              </div>
             </div>
-          </div>
-        </div>
-      )}
 
-      {/* Résultats du scan */}
-      {scanResults.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="w-5 h-5 text-primary-500" />
-                {scanResults.length} email{scanResults.length > 1 ? 's' : ''} trouvé{scanResults.length > 1 ? 's' : ''}
-              </CardTitle>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={toggleSelectAll}
-                  className="text-sm text-primary-600 hover:text-primary-700"
+            {/* Sélection plage de dates */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-slate-700 mb-3">
+                Sélectionnez une plage de dates
+              </label>
+              <div className="relative">
+                <select
+                  value={dateRange}
+                  onChange={(e) => setDateRange(e.target.value)}
+                  className="w-full appearance-none bg-white border border-slate-200 rounded-lg px-4 py-3 pr-10 text-sm text-slate-700 focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
-                  {selectedEmails.size === scanResults.length ? 'Tout désélectionner' : 'Tout sélectionner'}
-                </button>
-                <Button
-                  onClick={handleImport}
-                  disabled={isImporting || selectedEmails.size === 0}
-                  className="bg-emerald-500 hover:bg-emerald-600"
-                >
-                  {isImporting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4 mr-2" />
-                  )}
-                  Importer {selectedEmails.size} email{selectedEmails.size > 1 ? 's' : ''}
-                </Button>
+                  {dateRangeOptions.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
               </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
-              {scanResults.map((email) => (
-                <div
-                  key={email.id}
-                  onClick={() => toggleEmailSelection(email.id)}
-                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                    selectedEmails.has(email.id)
-                      ? 'border-primary-500 bg-primary-50'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-start gap-3">
+              
+              {/* Custom dates */}
+              {dateRange === 'custom' && (
+                <div className="grid grid-cols-2 gap-4 mt-4">
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Date de début</label>
                     <input
-                      type="checkbox"
-                      checked={selectedEmails.has(email.id)}
-                      onChange={() => toggleEmailSelection(email.id)}
-                      className="mt-1 w-4 h-4 text-primary-500 rounded"
+                      type="date"
+                      value={customStartDate}
+                      onChange={(e) => setCustomStartDate(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        {(email as any).source === 'outlook' ? (
-                          <MicrosoftIcon size={16} />
-                        ) : (
-                          <GoogleIcon size={16} />
-                        )}
-                        <span className="font-medium text-slate-900 truncate">
-                          {email.subject}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm text-slate-500">
-                        <span className="truncate">{email.from}</span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {formatDate(email.date)}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          {email.attachmentCount} pièce{email.attachmentCount > 1 ? 's' : ''} jointe{email.attachmentCount > 1 ? 's' : ''}
-                        </span>
-                      </div>
-                      {/* Liste des pièces jointes */}
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {email.attachments.map((att) => (
-                          <span
-                            key={att.id}
-                            className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 rounded text-xs text-slate-600"
-                          >
-                            <FileText className="w-3 h-3" />
-                            {att.filename}
-                            <span className="text-slate-400">({formatFileSize(att.size)})</span>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-slate-500 mb-1">Date de fin</label>
+                    <input
+                      type="date"
+                      value={customEndDate}
+                      onChange={(e) => setCustomEndDate(e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    />
                   </div>
                 </div>
-              ))}
+              )}
             </div>
-          </CardContent>
-        </Card>
-      )}
 
-      {/* État vide après scan */}
-      {!isScanning && scanResults.length === 0 && startDate && endDate && (
-        <div className="text-center py-12 bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
-          <Mail className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-700 mb-2">
-            Prêt à extraire vos factures
-          </h3>
-          <p className="text-slate-500 max-w-md mx-auto">
-            Sélectionnez une plage de dates et cliquez sur "Rechercher" pour scanner vos emails
-          </p>
-        </div>
-      )}
+            {/* Options avancées */}
+            <div className="mb-6">
+              <button
+                onClick={() => setShowAdvanced(!showAdvanced)}
+                className="flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700"
+              >
+                <Settings className="w-4 h-4" />
+                Afficher les options avancées
+              </button>
+              
+              {showAdvanced && (
+                <div className="mt-4 p-4 bg-slate-50 rounded-lg space-y-3">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" defaultChecked className="rounded text-primary-600" />
+                    <span className="text-sm text-slate-700">Inclure les pièces jointes PDF</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" defaultChecked className="rounded text-primary-600" />
+                    <span className="text-sm text-slate-700">Inclure les images (JPG, PNG)</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" className="rounded text-primary-600" />
+                    <span className="text-sm text-slate-700">Exclure les newsletters</span>
+                  </label>
+                </div>
+              )}
+            </div>
 
-      {/* Info box */}
-      <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-        <div className="flex items-start gap-3">
-          <Sparkles className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="font-medium text-amber-900">Analyse IA automatique</p>
-            <p className="text-sm text-amber-700">
-              Chaque document importé est automatiquement analysé par notre IA pour extraire le fournisseur, 
-              le montant, la TVA, les lignes de facturation et toutes les informations importantes.
-            </p>
+            {/* Messages */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-sm text-red-700">
+                <AlertCircle className="w-4 h-4" />
+                {error}
+              </div>
+            )}
+            
+            {success && (
+              <div className="mb-4 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2 text-sm text-emerald-700">
+                <CheckCircle className="w-4 h-4" />
+                {success}
+              </div>
+            )}
+
+            {/* Progress */}
+            {isExtracting && (
+              <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center gap-3 mb-2">
+                  <Loader2 className="w-5 h-5 text-blue-600 animate-spin" />
+                  <span className="text-sm font-medium text-blue-900">
+                    Extraction en cours... ({extractionProgress.current}/{extractionProgress.total})
+                  </span>
+                </div>
+                <div className="h-2 bg-blue-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-600 transition-all"
+                    style={{ width: `${extractionProgress.total ? (extractionProgress.current / extractionProgress.total) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Bouton action */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button className="text-sm text-slate-500 hover:text-slate-700">
+                Annuler
+              </button>
+              <Button
+                onClick={handleExtract}
+                disabled={isExtracting || !selectedEmail}
+                className="bg-primary-500 hover:bg-primary-600"
+              >
+                {isExtracting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Lancer l'extraction
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
           </div>
+        </div>
+
+        {/* === COLONNE DROITE - Extractions récentes === */}
+        <div className="lg:col-span-1">
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Extractions récentes</h2>
+            
+            {recentExtractions.length === 0 ? (
+              <p className="text-sm text-slate-500">Aucune extraction récente</p>
+            ) : (
+              <div className="space-y-3">
+                {recentExtractions.slice(0, 5).map((extraction) => (
+                  <div key={extraction.id} className="p-3 bg-slate-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-slate-900">{extraction.dateRange}</span>
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        extraction.status === 'completed' 
+                          ? 'bg-emerald-100 text-emerald-700' 
+                          : extraction.status === 'pending'
+                          ? 'bg-amber-100 text-amber-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        {extraction.status === 'completed' && <CheckCircle className="w-3 h-3" />}
+                        {extraction.status === 'completed' ? 'Complété' : extraction.status === 'pending' ? 'En cours' : 'Échoué'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">{extraction.email}</p>
+                    <p className="text-xs text-slate-600 mt-1">{extraction.documentCount} documents</p>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            <button className="flex items-center gap-1 text-sm text-slate-600 hover:text-slate-900 mt-4">
+              Voir toutes les extractions
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Section historique */}
+      <div className="mt-8">
+        <h2 className="text-lg font-semibold text-slate-900 mb-4">Vos extractions passées</h2>
+        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+          {recentExtractions.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">
+              <Clock className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <p>Aucune extraction effectuée</p>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Période</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Compte</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Statut</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Documents</th>
+                  <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500 uppercase">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {recentExtractions.map((extraction) => (
+                  <tr key={extraction.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3 text-sm text-slate-900">{extraction.dateRange}</td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{extraction.email}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                        extraction.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+                      }`}>
+                        {extraction.status === 'completed' ? 'Complété' : 'Échoué'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600">{extraction.documentCount}</td>
+                    <td className="px-4 py-3 text-sm text-slate-500">
+                      {new Date(extraction.createdAt).toLocaleDateString('fr-FR')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-// Google Icon Component
+// Google Icon
 function GoogleIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">
-      <path
-        fill="#4285F4"
-        d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-      />
-      <path
-        fill="#34A853"
-        d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
-      />
-      <path
-        fill="#EA4335"
-        d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-      />
+      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
     </svg>
   );
 }
 
-// Microsoft Icon Component
+// Microsoft Icon
 function MicrosoftIcon({ size = 24 }: { size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">
@@ -608,4 +523,3 @@ function MicrosoftIcon({ size = 24 }: { size?: number }) {
     </svg>
   );
 }
-

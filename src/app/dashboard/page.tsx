@@ -11,37 +11,29 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Dashboard } from '@/components/Dashboard';
 import { UploadDocumentModern } from '@/components/UploadDocumentModern';
 import { DocumentDetail } from '@/components/DocumentDetail';
-import { DocumentCard } from '@/components/documents/DocumentCard';
+import { DocumentsTable } from '@/components/documents/DocumentsTable';
 import { SettingsPage } from '@/components/settings/SettingsPage';
 import { TeamsPage } from '@/components/teams/TeamsPage';
 import { ConnectorHub } from '@/components/connectors/ConnectorHub';
 import { ExtractionCenter } from '@/components/connectors/ExtractionCenter';
 import { WhatsAppSetup } from '@/components/whatsapp/WhatsAppSetup';
 import { Button } from '@/components/ui/Button';
-import { Card, StatCard } from '@/components/ui/Card';
+import { Card } from '@/components/ui/Card';
 import { 
-  Plus, 
   Search, 
   FileText,
-  TrendingUp,
-  TrendingDown,
-  Receipt,
-  Download,
-  Filter,
-  LayoutGrid,
-  List,
-  Building2,
-  Shield,
-  CreditCard,
-  HelpCircle,
   ChevronDown,
   SlidersHorizontal,
-  RefreshCw
+  RefreshCw,
+  Building2,
+  Plus,
+  Settings,
+  Check
 } from 'lucide-react';
+import { useRef } from 'react';
 
 // Types pour les filtres
 type DocumentFilter = 'all' | 'to_export' | 'exported' | 'to_review' | 'recent';
-type ViewMode = 'grid' | 'list';
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
@@ -60,8 +52,20 @@ export default function DashboardPage() {
   // UI States
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<DocumentFilter>('all');
-  const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [showOrgDropdown, setShowOrgDropdown] = useState(false);
+  const orgDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close org dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (orgDropdownRef.current && !orgDropdownRef.current.contains(event.target as Node)) {
+        setShowOrgDropdown(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Auth Check
   useEffect(() => {
@@ -159,7 +163,7 @@ export default function DashboardPage() {
     upload: { title: 'Importer', subtitle: 'Glissez-déposez vos factures' },
     connectors: { title: 'Email', subtitle: 'Connectez vos boîtes mail' },
     extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures par plage de dates' },
-    documents: { title: 'Documents comptables', subtitle: 'Toutes vos factures et reçus prêts pour la réconciliation' },
+    documents: { title: 'Accounting documents', subtitle: 'All receipts and invoices (paid and unpaid) ready for reconciliation' },
     teams: { title: 'Équipes', subtitle: 'Collaborez avec vos collègues' },
     settings: { title: 'Paramètres', subtitle: 'Gérez votre compte' },
     billing: { title: 'Facturation', subtitle: 'Gérez votre abonnement' },
@@ -169,13 +173,13 @@ export default function DashboardPage() {
 
   const currentPage = pageTitles[activeTab] || { title: '', subtitle: '' };
 
-  // Filter tabs config
+  // Filter tabs config - Style Receptor AI
   const filterTabs: { id: DocumentFilter; label: string }[] = [
-    { id: 'all', label: 'Tous' },
-    { id: 'to_export', label: 'À exporter' },
-    { id: 'exported', label: 'Exportés' },
-    { id: 'to_review', label: 'À vérifier' },
-    { id: 'recent', label: 'Récents' },
+    { id: 'all', label: 'All' },
+    { id: 'to_export', label: 'To Export' },
+    { id: 'exported', label: 'Exported' },
+    { id: 'to_review', label: 'To Review' },
+    { id: 'recent', label: 'Last Extracted' },
   ];
 
   return (
@@ -205,16 +209,31 @@ export default function DashboardPage() {
         setActiveTab={setActiveTab}
         userEmail={session.user?.email}
         userName={session.user?.name}
-        companies={companies}
-        selectedCompanyId={selectedCompanyId}
-        setSelectedCompanyId={setSelectedCompanyId}
       />
 
       {/* Main Content Area */}
-      <div className="ml-20 lg:ml-72 transition-all duration-300">
-        {/* Page Header - Style Pro */}
-        <header className="sticky top-0 z-40 bg-white border-b border-slate-200">
-          <div className="px-6 lg:px-8 py-4">
+      <div className="ml-20 lg:ml-64 transition-all duration-300 bg-slate-50 min-h-screen">
+        {/* Top Bar */}
+        <div className="bg-emerald-600 h-12 flex items-center justify-between px-6">
+          <div className="flex items-center gap-3">
+            {/* Organization Selector */}
+            <div className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-lg cursor-pointer transition-colors">
+              <div className="w-6 h-6 bg-amber-500 rounded flex items-center justify-center">
+                <span className="text-white text-xs font-bold">
+                  {companies.find(c => c.id === selectedCompanyId)?.name?.charAt(0) || 'E'}
+                </span>
+              </div>
+              <span className="text-white text-sm font-medium">
+                {companies.find(c => c.id === selectedCompanyId)?.name || 'Mon Entreprise'}
+              </span>
+              <ChevronDown className="w-4 h-4 text-white/70" />
+            </div>
+          </div>
+        </div>
+
+        {/* Page Header */}
+        <header className="bg-white border-b border-slate-200">
+          <div className="px-6 lg:px-8 py-5">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-xl font-semibold text-slate-900">{currentPage.title}</h1>
@@ -223,15 +242,6 @@ export default function DashboardPage() {
 
               {/* Actions Header */}
               <div className="flex items-center gap-3">
-                {activeTab === 'documents' && (
-                  <Button 
-                    leftIcon={<Download className="w-4 h-4" />}
-                    className="bg-primary-500 hover:bg-primary-600"
-                  >
-                    Exporter tout
-                    <ChevronDown className="w-4 h-4 ml-1" />
-                  </Button>
-                )}
                 {activeTab === 'dashboard' && (
                   <Button 
                     variant="outline"
@@ -244,26 +254,26 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Filter Bar - Style Receptor (only on documents view) */}
+            {/* Filter Bar - Style Receptor AI (only on documents view) */}
             {activeTab === 'documents' && (
-              <div className="mt-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-                {/* Filter Tabs */}
-                <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-lg">
+              <div className="mt-4 flex items-center justify-between">
+                {/* Left: Filter Tabs */}
+                <div className="flex items-center gap-4">
                   {filterTabs.map((tab) => (
                     <button
                       key={tab.id}
                       onClick={() => setActiveFilter(tab.id)}
-                      className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all
+                      className={`flex items-center gap-2 text-sm font-medium transition-all pb-2 border-b-2
                         ${activeFilter === tab.id
-                          ? 'bg-white text-slate-900 shadow-sm'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                          ? 'text-slate-900 border-slate-900'
+                          : 'text-slate-500 border-transparent hover:text-slate-700'
                         }`}
                     >
                       {tab.label}
-                      <span className={`px-1.5 py-0.5 rounded text-xs font-medium
+                      <span className={`px-1.5 py-0.5 rounded text-xs
                         ${activeFilter === tab.id
-                          ? 'bg-primary-100 text-primary-700'
-                          : 'bg-slate-200 text-slate-500'
+                          ? 'bg-slate-200 text-slate-700'
+                          : 'bg-slate-100 text-slate-500'
                         }`}>
                         {filterCounts[tab.id]}
                       </span>
@@ -271,50 +281,46 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
-                {/* Right Controls */}
+                {/* Right: Controls */}
                 <div className="flex items-center gap-2">
                   {/* Search */}
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input 
                       type="text"
-                      placeholder="Rechercher..."
+                      placeholder="Search"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-48 lg:w-64 bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2 text-sm 
+                      className="w-40 bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-sm 
                                focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 
                                placeholder:text-slate-400 transition-all"
                     />
                   </div>
 
-                  {/* Filters Button */}
-                  <button className="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:border-slate-300 transition-colors bg-white">
-                    <SlidersHorizontal className="w-4 h-4" />
-                    <span className="hidden sm:inline">Filtres</span>
+                  <span className="text-slate-300">/</span>
+
+                  {/* Load View */}
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white">
+                    <FileText className="w-4 h-4" />
+                    Load View
                   </button>
 
-                  {/* View Mode Toggle */}
-                  <div className="flex items-center border border-slate-200 rounded-lg overflow-hidden bg-white">
-                    <button 
-                      onClick={() => setViewMode('grid')}
-                      className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-slate-100 text-primary-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                      title="Vue grille"
-                    >
-                      <LayoutGrid className="w-4 h-4" />
-                    </button>
-                    <button 
-                      onClick={() => setViewMode('list')}
-                      className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-slate-100 text-primary-600' : 'text-slate-400 hover:text-slate-600 hover:bg-slate-50'}`}
-                      title="Vue liste"
-                    >
-                      <List className="w-4 h-4" />
-                    </button>
-                  </div>
+                  {/* Filters */}
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    Filters
+                  </button>
 
-                  {/* Add Button */}
-                  <Button onClick={() => setActiveTab('upload')} size="sm" leftIcon={<Plus className="w-4 h-4" />}>
-                    Nouveau
-                  </Button>
+                  {/* Actions */}
+                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white">
+                    <span className="text-slate-400">:</span>
+                    Actions
+                  </button>
+
+                  {/* View Toggle */}
+                  <button className="p-1.5 border border-slate-200 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-50 transition-colors bg-white">
+                    <List className="w-4 h-4" />
+                  </button>
                 </div>
               </div>
             )}
@@ -357,53 +363,6 @@ export default function DashboardPage() {
                     </div>
                   </Card>
                 )}
-
-                {selectedCompanyId && (() => {
-                  const now = new Date();
-                  const thisMonth = documents.filter(d => {
-                    const docDate = d.date ? new Date(d.date) : new Date(d.createdAt);
-                    return docDate.getMonth() === now.getMonth() && docDate.getFullYear() === now.getFullYear();
-                  });
-                  
-                  const revenus = thisMonth
-                    .filter(d => d.docType === 'FACTURE_VENTE')
-                    .reduce((sum, d) => sum + (d.amount || 0), 0);
-                  
-                  const depenses = thisMonth
-                    .filter(d => d.docType === 'FACTURE_ACHAT' || d.docType === 'NOTE_FRAIS' || d.docType === 'RECU')
-                    .reduce((sum, d) => sum + (d.amount || 0), 0);
-                  
-                  const tva = thisMonth.reduce((sum, d) => sum + (d.vat || 0), 0);
-
-                  return (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                      <StatCard 
-                        title="Revenus du mois" 
-                        value={`${revenus.toLocaleString('fr-FR')} €`}
-                        icon={<TrendingUp className="w-6 h-6" />}
-                        iconColor="text-success-500"
-                      />
-                      <StatCard 
-                        title="Dépenses" 
-                        value={`${depenses.toLocaleString('fr-FR')} €`}
-                        icon={<TrendingDown className="w-6 h-6" />}
-                        iconColor="text-danger-500"
-                      />
-                      <StatCard 
-                        title="TVA collectée" 
-                        value={`${tva.toLocaleString('fr-FR')} €`}
-                        icon={<Receipt className="w-6 h-6" />}
-                        iconColor="text-warning-500"
-                      />
-                      <StatCard 
-                        title="Documents" 
-                        value={documents.length.toString()}
-                        icon={<FileText className="w-6 h-6" />}
-                        iconColor="text-primary-500"
-                      />
-                    </div>
-                  );
-                })()}
 
                 {selectedCompanyId && (
                   <Dashboard key={refreshKey} companyId={selectedCompanyId} />
@@ -471,36 +430,23 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className={viewMode === 'grid' 
-                    ? 'grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'
-                    : 'space-y-2'
-                  }>
-                    {documents
-                      .filter(doc => {
-                        const matchesSearch = (doc.filename + (doc.supplier || '')).toLowerCase().includes(searchTerm.toLowerCase());
-                        
-                        // Apply filters
-                        let matchesFilter = true;
-                        if (activeFilter === 'to_export') matchesFilter = !doc.exported;
-                        if (activeFilter === 'exported') matchesFilter = doc.exported === true;
-                        if (activeFilter === 'to_review') matchesFilter = !doc.analyzed;
-                        if (activeFilter === 'recent') {
-                          const date = new Date(doc.createdAt);
-                          const now = new Date();
-                          matchesFilter = (now.getTime() - date.getTime()) < 7 * 24 * 60 * 60 * 1000;
-                        }
-                        
-                        return matchesSearch && matchesFilter;
-                      })
-                      .map((doc) => (
-                        <DocumentCard
-                          key={doc.id}
-                          document={doc}
-                          onClick={() => setSelectedDocument(doc)}
-                          selected={false}
-                        />
-                      ))}
-                  </div>
+                  /* Vue Tableau */
+                  <DocumentsTable
+                    documents={documents.filter(doc => {
+                      const matchesSearch = (doc.filename + (doc.supplier || '')).toLowerCase().includes(searchTerm.toLowerCase());
+                      let matchesFilter = true;
+                      if (activeFilter === 'to_export') matchesFilter = !doc.exported;
+                      if (activeFilter === 'exported') matchesFilter = doc.exported === true;
+                      if (activeFilter === 'to_review') matchesFilter = !doc.analyzed;
+                      if (activeFilter === 'recent') {
+                        const date = new Date(doc.createdAt);
+                        const now = new Date();
+                        matchesFilter = (now.getTime() - date.getTime()) < 7 * 24 * 60 * 60 * 1000;
+                      }
+                      return matchesSearch && matchesFilter;
+                    })}
+                    onDocumentClick={(doc) => setSelectedDocument(doc)}
+                  />
                 )}
               </div>
             )}

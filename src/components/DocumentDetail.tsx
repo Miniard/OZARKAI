@@ -1,6 +1,6 @@
 /**
- * DocumentDetail - Vue plein écran d'une facture
- * PDF en grand + lignes en dessous
+ * DocumentDetail - Style Receptor AI
+ * Formulaire à gauche avec tabs + Preview PDF à droite
  */
 
 'use client';
@@ -8,10 +8,9 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { 
-  FileText, Calendar, Building2, Receipt, X, Download, 
-  Maximize2, Minimize2, Loader2, Save, Trash2,
-  ZoomIn, ZoomOut, Package, Plus, ShoppingCart,
-  CreditCard, ArrowLeft, Edit3, Check, Sparkles, RefreshCw
+  ArrowLeft, Download, Trash2, Save, Loader2, Check,
+  ZoomIn, ZoomOut, ChevronLeft, ChevronRight, FileText,
+  Plus, X, Maximize2, RotateCw
 } from 'lucide-react';
 
 interface LineItem {
@@ -44,117 +43,79 @@ interface DocumentDetailProps {
   onAnalyzed?: () => void;
 }
 
+type Tab = 'basic' | 'lineItems' | 'exports' | 'duplicates';
+
 export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed }: DocumentDetailProps) {
+  const [activeTab, setActiveTab] = useState<Tab>('basic');
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
   const [zoom, setZoom] = useState(100);
-  const [isEditing, setIsEditing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = 2; // Simulé
   
   // Données du formulaire
   const [formData, setFormData] = useState({
     docType: document.docType || 'FACTURE_ACHAT',
     supplier: document.supplier || '',
     supplierVatNumber: document.analysisData?.supplierVatNumber || '',
-    invoiceNumber: document.analysisData?.invoiceNumber || '',
+    invoiceNumber: document.analysisData?.invoiceNumber || document.analysisData?.numero || '',
+    receiptNumber: '',
+    transactionId: '',
+    poNumber: '',
+    quoteId: '',
     date: document.date ? new Date(document.date).toISOString().split('T')[0] : '',
-    amount: document.amount || 0,
-    vat: document.vat || 0,
+    dueDate: document.analysisData?.dueDate || '',
+    billedTo: '',
+    account: document.analysisData?.category || '',
     currency: document.analysisData?.currency || 'EUR',
-    paymentMethod: document.analysisData?.paymentMethod || '',
-    category: document.analysisData?.category || '',
   });
 
-  // Lignes du document
   const [lineItems, setLineItems] = useState<LineItem[]>(
     document.analysisData?.lineItems || []
   );
 
   const isPDF = document.fileType === 'pdf' || document.filename?.toLowerCase().endsWith('.pdf');
-  const isImage = document.fileType?.startsWith('image') || 
-    /\.(jpg|jpeg|png|gif|webp)$/i.test(document.filename || '');
+  const isImage = document.fileType?.startsWith('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(document.filename || '');
 
-  // Sync quand le document change
+  // Auto-analyze
   useEffect(() => {
-    setFormData({
-      docType: document.docType || 'FACTURE_ACHAT',
-      supplier: document.supplier || '',
-      supplierVatNumber: document.analysisData?.supplierVatNumber || '',
-      invoiceNumber: document.analysisData?.invoiceNumber || '',
-      date: document.date ? new Date(document.date).toISOString().split('T')[0] : '',
-      amount: document.amount || 0,
-      vat: document.vat || 0,
-      currency: document.analysisData?.currency || 'EUR',
-      paymentMethod: document.analysisData?.paymentMethod || '',
-      category: document.analysisData?.category || '',
-    });
-    setLineItems(document.analysisData?.lineItems || []);
-    setHasChanges(false);
+    if (!document.analyzed && !isAnalyzing && !document.analysisData?.lineItems?.length) {
+      autoAnalyze();
+    }
   }, [document.id]);
 
-  // 🔥 ANALYSE AUTOMATIQUE si document pas encore analysé
-  useEffect(() => {
-    const autoAnalyze = async () => {
-      // Ne pas analyser si déjà analysé ou si analyse en cours
-      if (document.analyzed || isAnalyzing) return;
+  const autoAnalyze = async () => {
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ documentId: document.id }),
+      });
+      const data = await response.json();
       
-      // Ne pas analyser si on a déjà des données
-      if (document.analysisData?.lineItems?.length > 0) return;
-      
-      console.log('🤖 [AUTO] Lancement analyse automatique pour:', document.id);
-      setIsAnalyzing(true);
-      setAnalyzeError(null);
-      
-      try {
-        const response = await fetch('/api/analyze', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ documentId: document.id }),
-        });
-
-        const data = await response.json();
-        
-        if (!response.ok) {
-          throw new Error(data.error || 'Erreur lors de l\'analyse');
+      if (data.analysis) {
+        setFormData(prev => ({
+          ...prev,
+          docType: data.analysis.type || prev.docType,
+          supplier: data.analysis.fournisseur || prev.supplier,
+          supplierVatNumber: data.analysis.fournisseurTVA || prev.supplierVatNumber,
+          invoiceNumber: data.analysis.numero || prev.invoiceNumber,
+          date: data.analysis.date || prev.date,
+          account: data.analysis.category || prev.account,
+        }));
+        if (data.analysis.lineItems?.length) {
+          setLineItems(data.analysis.lineItems);
         }
-
-        console.log('✅ [AUTO] Analyse automatique réussie!');
-        console.log('📊 [AUTO] Lignes extraites:', data.analysis?.lineItems?.length || 0);
-        
-        // Mettre à jour les données locales avec le résultat
-        if (data.analysis) {
-          setFormData({
-            docType: data.analysis.type || 'FACTURE_ACHAT',
-            supplier: data.analysis.fournisseur || '',
-            supplierVatNumber: data.analysis.fournisseurTVA || '',
-            invoiceNumber: data.analysis.numero || '',
-            date: data.analysis.date || '',
-            amount: data.analysis.montantTTC || 0,
-            vat: data.analysis.tva || 0,
-            currency: data.analysis.devise || 'EUR',
-            paymentMethod: data.analysis.paymentMethod || '',
-            category: data.analysis.category || '',
-          });
-          
-          if (data.analysis.lineItems && data.analysis.lineItems.length > 0) {
-            setLineItems(data.analysis.lineItems);
-          }
-        }
-        
-        // Rafraîchir la liste
-        if (onAnalyzed) onAnalyzed();
-        
-      } catch (error) {
-        console.error('❌ [AUTO] Erreur analyse:', error);
-        setAnalyzeError(error instanceof Error ? error.message : 'Erreur inconnue');
-      } finally {
-        setIsAnalyzing(false);
       }
-    };
-
-    autoAnalyze();
-  }, [document.id, document.analyzed]);
+      if (onAnalyzed) onAnalyzed();
+    } catch (e) {
+      console.error('Auto-analyze error:', e);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   const handleFieldChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -164,11 +125,9 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
   const handleLineChange = (index: number, field: keyof LineItem, value: any) => {
     const updated = [...lineItems];
     updated[index] = { ...updated[index], [field]: value };
-    
     if (field === 'quantity' || field === 'unitPrice') {
       updated[index].amount = (updated[index].quantity || 0) * (updated[index].unitPrice || 0);
     }
-    
     setLineItems(updated);
     setHasChanges(true);
   };
@@ -176,7 +135,6 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
   const addLine = () => {
     setLineItems([...lineItems, { description: '', quantity: 1, unitPrice: 0, amount: 0 }]);
     setHasChanges(true);
-    setIsEditing(true);
   };
 
   const removeLine = (index: number) => {
@@ -187,19 +145,7 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const totalHT = lineItems.reduce((sum, item) => sum + (item.amount || 0), 0);
-      const totalVAT = lineItems.reduce((sum, item) => {
-        const vatRate = item.vatRate || 20;
-        return sum + (item.amount * vatRate / 100);
-      }, 0);
-
-      const dataToSave = {
-        ...formData,
-        amount: totalHT + totalVAT || formData.amount,
-        vat: totalVAT || formData.vat,
-        lineItems,
-      };
-
+      const dataToSave = { ...formData, lineItems };
       if (onSave) {
         await onSave(dataToSave);
       } else {
@@ -209,436 +155,467 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
           body: JSON.stringify(dataToSave),
         });
       }
-      
       setHasChanges(false);
-      setIsEditing(false);
       if (onAnalyzed) onAnalyzed();
-    } catch (error) {
-      console.error('Erreur sauvegarde:', error);
+    } catch (e) {
+      console.error('Save error:', e);
     } finally {
       setIsSaving(false);
     }
   };
 
-  const currencySymbol = formData.currency === 'EUR' ? '€' : formData.currency === 'USD' ? '$' : formData.currency;
-  const totalHT = lineItems.length > 0 
-    ? lineItems.reduce((sum, item) => sum + (item.amount || 0), 0)
-    : (formData.amount || 0) - (formData.vat || 0);
-  const totalTTC = lineItems.length > 0 
-    ? totalHT + lineItems.reduce((sum, item) => sum + (item.amount * (item.vatRate || 20) / 100), 0)
-    : formData.amount || 0;
-
-  // Fonction de téléchargement qui gère les data URLs (base64)
   const handleDownload = () => {
     if (!document.fileUrl) return;
-    
-    // Si c'est un data URL (base64), le convertir en blob pour télécharger
     if (document.fileUrl.startsWith('data:')) {
-      try {
-        // Extraire le type MIME et les données base64
-        const [header, base64Data] = document.fileUrl.split(',');
-        const mimeMatch = header.match(/data:([^;]+)/);
-        const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
-        
-        // Convertir base64 en blob
-        const byteCharacters = atob(base64Data);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
-        }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: mimeType });
-        
-        // Créer un lien de téléchargement
-        const url = URL.createObjectURL(blob);
-        const link = window.document.createElement('a');
-        link.href = url;
-        link.download = document.filename || 'document';
-        window.document.body.appendChild(link);
-        link.click();
-        window.document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      } catch (error) {
-        console.error('Erreur téléchargement:', error);
-        alert('Erreur lors du téléchargement');
+      const [header, base64Data] = document.fileUrl.split(',');
+      const mimeMatch = header.match(/data:([^;]+)/);
+      const mimeType = mimeMatch ? mimeMatch[1] : 'application/octet-stream';
+      const byteCharacters = atob(base64Data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      const url = URL.createObjectURL(blob);
+      const link = window.document.createElement('a');
+      link.href = url;
+      link.download = document.filename || 'document';
+      link.click();
+      URL.revokeObjectURL(url);
     } else {
-      // URL normale, ouvrir dans un nouvel onglet
       window.open(document.fileUrl, '_blank');
     }
   };
 
-  const docTypeLabels: Record<string, string> = {
-    'FACTURE_ACHAT': 'Facture d\'achat',
-    'FACTURE_VENTE': 'Facture de vente',
-    'NOTE_FRAIS': 'Note de frais',
-    'RECU': 'Reçu',
-    'DEVIS': 'Devis',
-    'AUTRE': 'Autre',
+  // Générer couleur vendeur
+  const getVendorColor = (name: string) => {
+    const colors = ['bg-blue-500', 'bg-emerald-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
+    const index = name ? name.charCodeAt(0) % colors.length : 0;
+    return colors[index];
   };
 
-  return (
-    <div className="fixed inset-0 bg-slate-100 z-[100] overflow-hidden flex flex-col">
-      {/* HEADER */}
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-slate-600" />
-          </button>
-          <div>
-            <h1 className="text-lg font-semibold text-slate-900">
-              {formData.invoiceNumber ? `Facture #${formData.invoiceNumber}` : document.filename}
-            </h1>
-            <p className="text-sm text-slate-500">
-              {formData.supplier || 'Fournisseur non défini'} • {formData.date ? new Date(formData.date).toLocaleDateString('fr-FR') : 'Date non définie'}
-            </p>
-          </div>
-        </div>
+  const vendorName = formData.supplier || 'Unknown';
+  const tabs: { id: Tab; label: string; count?: number }[] = [
+    { id: 'basic', label: 'Basic' },
+    { id: 'lineItems', label: 'Line Items', count: lineItems.length },
+    { id: 'exports', label: 'Exports', count: 0 },
+    { id: 'duplicates', label: 'Duplicates', count: 0 },
+  ];
 
-        <div className="flex items-center gap-3">
-          {analyzeError && (
-            <span className="text-sm text-red-600 bg-red-50 px-3 py-1 rounded-full">
-              ⚠️ {analyzeError}
-            </span>
-          )}
-          {isAnalyzing && (
-            <span className="text-sm text-violet-600 bg-violet-50 px-3 py-1 rounded-full flex items-center gap-2">
-              <Loader2 className="w-3 h-3 animate-spin" />
-              Analyse IA en cours...
-            </span>
-          )}
-          {hasChanges && (
-            <span className="text-sm text-amber-600 bg-amber-50 px-3 py-1 rounded-full">
-              Non sauvegardé
-            </span>
-          )}
-          
-          <Button variant="outline" onClick={handleDownload}>
-            <Download className="w-4 h-4 mr-2" />
-            Télécharger
-          </Button>
-          {onDelete && (
-            <Button variant="outline" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          )}
-          <Button 
-            onClick={handleSave}
-            disabled={!hasChanges || isSaving}
-            className="bg-emerald-500 hover:bg-emerald-600"
-          >
-            {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-            Sauvegarder
-          </Button>
+  const docTypeOptions = [
+    { value: 'FACTURE_ACHAT', label: 'Invoice' },
+    { value: 'RECU', label: 'Receipt' },
+    { value: 'NOTE_FRAIS', label: 'Expense' },
+    { value: 'DEVIS', label: 'Quote' },
+    { value: 'AUTRE', label: 'Other' },
+  ];
+
+  const accountOptions = [
+    { value: '', label: 'Select account...' },
+    { value: 'SOFTWARE', label: 'Software and subscription services' },
+    { value: 'OFFICE', label: 'Office supplies' },
+    { value: 'TRAVEL', label: 'Travel expenses' },
+    { value: 'MARKETING', label: 'Marketing' },
+    { value: 'OTHER', label: 'Other expenses' },
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-slate-50 z-[100] flex flex-col">
+      {/* Header */}
+      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-4">
+          <button onClick={onClose} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+            <ArrowLeft className="w-4 h-4" />
+            Back to Documents
+          </button>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-slate-500">
+          <button className="hover:text-slate-700">← Previous</button>
+          <button className="hover:text-slate-700">Next →</button>
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <div className="flex-1 overflow-auto">
-        <div className="max-w-6xl mx-auto p-6 space-y-6">
-          
-          {/* === PDF VIEWER - GRAND === */}
-          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-            {/* Toolbar PDF */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50">
-              <span className="text-sm text-slate-600 font-medium">{document.filename}</span>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setZoom(Math.max(25, zoom - 25))}
-                  className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  <ZoomOut className="w-4 h-4 text-slate-600" />
-                </button>
-                <span className="text-sm text-slate-600 min-w-[50px] text-center">{zoom}%</span>
-                <button 
-                  onClick={() => setZoom(Math.min(200, zoom + 25))}
-                  className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
-                >
-                  <ZoomIn className="w-4 h-4 text-slate-600" />
-                </button>
-              </div>
+      {/* Document Header */}
+      <div className="bg-white border-b border-slate-200 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className={`w-12 h-12 rounded-xl ${getVendorColor(vendorName)} flex items-center justify-center`}>
+              <span className="text-white text-lg font-bold">{vendorName.charAt(0).toUpperCase()}</span>
             </div>
-
-            {/* PDF/Image */}
-            <div className="bg-slate-800 flex items-center justify-center p-8 min-h-[600px]">
-              {document.fileUrl ? (
-                <div 
-                  style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
-                  className="transition-transform duration-200"
-                >
-                  {isPDF ? (
-                    <iframe 
-                      src={document.fileUrl} 
-                      className="bg-white rounded-lg shadow-2xl"
-                      style={{ width: '800px', height: '1000px' }}
-                      title={document.filename}
-                    />
-                  ) : isImage ? (
-                    <img 
-                      src={document.fileUrl} 
-                      alt={document.filename}
-                      className="max-w-full max-h-[800px] rounded-lg shadow-2xl"
-                    />
-                  ) : (
-                    <div className="text-center text-white py-20">
-                      <FileText className="w-24 h-24 mx-auto mb-4 opacity-30" />
-                      <p className="text-xl">Aperçu non disponible</p>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center text-white py-20">
-                  <FileText className="w-24 h-24 mx-auto mb-4 opacity-30" />
-                  <p className="text-xl">Aucun fichier</p>
-                </div>
-              )}
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">
+                  {formData.docType === 'RECU' ? 'Receipt' : 'Invoice'}
+                </span>
+                <span className="text-sm text-slate-900 font-mono">
+                  #{formData.invoiceNumber || 'N/A'}
+                </span>
+              </div>
+              <h1 className="text-lg font-semibold text-slate-900">{vendorName}</h1>
             </div>
           </div>
 
-          {/* === ANALYSE EN COURS === */}
-          {isAnalyzing && (
-            <div className="bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 rounded-2xl p-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-violet-100 flex items-center justify-center flex-shrink-0">
-                  <Loader2 className="w-6 h-6 text-violet-600 animate-spin" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-violet-900 mb-1">
-                    🔍 Extraction automatique en cours...
-                  </h3>
-                  <p className="text-violet-700 text-sm">
-                    Notre IA extrait les informations de votre document : fournisseur, montants, lignes de produits...
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500">
+              Last updated: {document.createdAt ? new Date(document.createdAt).toLocaleDateString() : 'N/A'}
+            </span>
+            <Button variant="outline" size="sm">
+              <Download className="w-4 h-4 mr-1" /> Export
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownload}>
+              <Download className="w-4 h-4 mr-1" /> Download
+            </Button>
+            {onDelete && (
+              <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
+                <Trash2 className="w-4 h-4 mr-1" /> Delete
+              </Button>
+            )}
+            <Button 
+              size="sm"
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving}
+              className="bg-primary-500 hover:bg-primary-600"
+            >
+              {isSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
+              Save
+            </Button>
+          </div>
+        </div>
+      </div>
 
-          {/* === INFOS PRINCIPALES === */}
-          <div className="grid lg:grid-cols-3 gap-6">
-            {/* Montant */}
-            <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white">
-              <p className="text-emerald-100 text-sm font-medium mb-1">Montant Total TTC</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold">{totalTTC.toFixed(2)}</span>
-                <span className="text-3xl text-emerald-200">{currencySymbol}</span>
-              </div>
-              <div className="flex gap-4 mt-4 text-sm text-emerald-100">
-                <span>HT: {totalHT.toFixed(2)} {currencySymbol}</span>
-                <span>•</span>
-                <span>TVA: {(totalTTC - totalHT).toFixed(2)} {currencySymbol}</span>
-              </div>
-            </div>
+      {/* Main Content - Side by Side */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Panel - Form */}
+        <div className="w-[480px] bg-white border-r border-slate-200 flex flex-col overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b border-slate-200 px-4">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-primary-500 text-primary-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {tab.label}
+                {tab.count !== undefined && tab.count > 0 && (
+                  <span className="ml-1.5 px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
 
-            {/* Fournisseur */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-200">
-              <div className="flex items-center gap-2 mb-4">
-                <Building2 className="w-5 h-5 text-slate-400" />
-                <h3 className="font-semibold text-slate-700">Fournisseur</h3>
-              </div>
-              {isEditing ? (
-                <input
-                  type="text"
-                  value={formData.supplier}
-                  onChange={(e) => handleFieldChange('supplier', e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-lg font-medium"
-                  placeholder="Nom du fournisseur"
-                />
-              ) : (
-                <p className="text-xl font-semibold text-slate-900">{formData.supplier || '-'}</p>
-              )}
-              <p className="text-sm text-slate-500 mt-2">
-                {formData.supplierVatNumber || 'N° TVA non renseigné'}
-              </p>
-            </div>
-
-            {/* Infos */}
-            <div className="bg-white rounded-2xl p-6 border border-slate-200">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-slate-400" />
-                  <h3 className="font-semibold text-slate-700">Informations</h3>
+          {/* Form Content */}
+          <div className="flex-1 overflow-y-auto p-6">
+            {activeTab === 'basic' && (
+              <div className="space-y-6">
+                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">General</h3>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Source</label>
+                    <p className="text-sm text-slate-900">{document.source || 'Email'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Billed to</label>
+                    <select
+                      value={formData.billedTo}
+                      onChange={(e) => handleFieldChange('billedTo', e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    >
+                      <option value="">Select business entity...</option>
+                    </select>
+                  </div>
                 </div>
-                <button 
-                  onClick={() => setIsEditing(!isEditing)}
-                  className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                >
-                  {isEditing ? <Check className="w-4 h-4 text-emerald-600" /> : <Edit3 className="w-4 h-4 text-slate-400" />}
-                </button>
-              </div>
-              <div className="space-y-3">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Type</span>
-                  {isEditing ? (
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Type</label>
                     <select
                       value={formData.docType}
                       onChange={(e) => handleFieldChange('docType', e.target.value)}
-                      className="px-2 py-1 border border-slate-200 rounded text-sm"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                     >
-                      {Object.entries(docTypeLabels).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
+                      {docTypeOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
                       ))}
                     </select>
-                  ) : (
-                    <span className="font-medium text-slate-900">{docTypeLabels[formData.docType]}</span>
-                  )}
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Account</label>
+                    <select
+                      value={formData.account}
+                      onChange={(e) => handleFieldChange('account', e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    >
+                      {accountOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">Date</span>
-                  {isEditing ? (
-                    <input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleFieldChange('date', e.target.value)}
-                      className="px-2 py-1 border border-slate-200 rounded text-sm"
-                    />
-                  ) : (
-                    <span className="font-medium text-slate-900">
-                      {formData.date ? new Date(formData.date).toLocaleDateString('fr-FR') : '-'}
-                    </span>
-                  )}
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">N° Facture</span>
-                  {isEditing ? (
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Invoice #</label>
                     <input
                       type="text"
                       value={formData.invoiceNumber}
                       onChange={(e) => handleFieldChange('invoiceNumber', e.target.value)}
-                      className="px-2 py-1 border border-slate-200 rounded text-sm w-32 text-right"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
                     />
-                  ) : (
-                    <span className="font-medium text-slate-900">{formData.invoiceNumber || '-'}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* === LIGNES DU DOCUMENT === */}
-          <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
-              <div className="flex items-center gap-3">
-                <ShoppingCart className="w-5 h-5 text-slate-400" />
-                <h3 className="text-lg font-semibold text-slate-800">Lignes du document</h3>
-                <span className="bg-slate-100 text-slate-600 text-sm px-2 py-0.5 rounded-full">
-                  {lineItems.length} ligne{lineItems.length > 1 ? 's' : ''}
-                </span>
-              </div>
-              <Button variant="outline" size="sm" onClick={addLine}>
-                <Plus className="w-4 h-4 mr-1" />
-                Ajouter une ligne
-              </Button>
-            </div>
-
-            {lineItems.length === 0 ? (
-              <div className="p-12 text-center">
-                <Package className="w-16 h-16 mx-auto mb-4 text-slate-300" />
-                <h4 className="text-lg font-medium text-slate-700 mb-2">Aucune ligne ajoutée</h4>
-                <p className="text-slate-500 mb-6">Ajoutez les produits/services de cette facture</p>
-                <Button onClick={addLine}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Ajouter une ligne
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* Header table */}
-                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
-                  <div className="col-span-1">#</div>
-                  <div className="col-span-5">Description</div>
-                  <div className="col-span-1 text-center">Qté</div>
-                  <div className="col-span-2 text-right">Prix unit. HT</div>
-                  <div className="col-span-1 text-center">TVA</div>
-                  <div className="col-span-2 text-right">Total HT</div>
-                </div>
-
-                {/* Rows */}
-                <div className="divide-y divide-slate-100">
-                  {lineItems.map((item, index) => (
-                    <div key={index} className="grid grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors group">
-                      <div className="col-span-1">
-                        <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 text-sm flex items-center justify-center">
-                          {index + 1}
-                        </span>
-                      </div>
-                      <div className="col-span-5">
-                        <input
-                          type="text"
-                          value={item.description}
-                          onChange={(e) => handleLineChange(index, 'description', e.target.value)}
-                          placeholder="Description"
-                          className="w-full px-3 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg bg-transparent focus:bg-white transition-colors"
-                        />
-                      </div>
-                      <div className="col-span-1">
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => handleLineChange(index, 'quantity', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg text-center bg-transparent focus:bg-white transition-colors"
-                        />
-                      </div>
-                      <div className="col-span-2">
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={item.unitPrice}
-                          onChange={(e) => handleLineChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
-                          className="w-full px-2 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg text-right bg-transparent focus:bg-white transition-colors"
-                        />
-                      </div>
-                      <div className="col-span-1">
-                        <select
-                          value={item.vatRate || 20}
-                          onChange={(e) => handleLineChange(index, 'vatRate', parseFloat(e.target.value))}
-                          className="w-full px-1 py-2 border border-transparent hover:border-slate-200 focus:border-emerald-500 rounded-lg text-center bg-transparent focus:bg-white transition-colors text-sm"
-                        >
-                          <option value={0}>0%</option>
-                          <option value={5.5}>5.5%</option>
-                          <option value={10}>10%</option>
-                          <option value={20}>20%</option>
-                        </select>
-                      </div>
-                      <div className="col-span-2 flex items-center justify-end gap-2">
-                        <span className="font-semibold text-slate-900">
-                          {item.amount.toFixed(2)} {currencySymbol}
-                        </span>
-                        <button
-                          onClick={() => removeLine(index)}
-                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded opacity-0 group-hover:opacity-100 transition-all"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Totaux */}
-                <div className="bg-slate-50 px-6 py-4 border-t border-slate-200">
-                  <div className="max-w-xs ml-auto space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">Sous-total HT</span>
-                      <span className="font-medium text-slate-700">{totalHT.toFixed(2)} {currencySymbol}</span>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-500">TVA</span>
-                      <span className="font-medium text-slate-700">{(totalTTC - totalHT).toFixed(2)} {currencySymbol}</span>
-                    </div>
-                    <div className="flex justify-between text-lg font-bold pt-2 border-t border-slate-200">
-                      <span className="text-slate-900">Total TTC</span>
-                      <span className="text-emerald-600">{totalTTC.toFixed(2)} {currencySymbol}</span>
-                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Receipt #</label>
+                    <input
+                      type="text"
+                      value={formData.receiptNumber}
+                      onChange={(e) => handleFieldChange('receiptNumber', e.target.value)}
+                      placeholder="Invoice ID"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Transaction #</label>
+                    <input
+                      type="text"
+                      value={formData.transactionId}
+                      onChange={(e) => handleFieldChange('transactionId', e.target.value)}
+                      placeholder="Transaction ID"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
+                    />
                   </div>
                 </div>
-              </>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">PO #</label>
+                    <input
+                      type="text"
+                      value={formData.poNumber}
+                      onChange={(e) => handleFieldChange('poNumber', e.target.value)}
+                      placeholder="Purchase Order ID"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Quote #</label>
+                    <input
+                      type="text"
+                      value={formData.quoteId}
+                      onChange={(e) => handleFieldChange('quoteId', e.target.value)}
+                      placeholder="Quote ID"
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Invoice Date</label>
+                    <input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => handleFieldChange('date', e.target.value)}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm text-slate-600 mb-1">Due Date</label>
+                  <input
+                    type="date"
+                    value={formData.dueDate}
+                    onChange={(e) => handleFieldChange('dueDate', e.target.value)}
+                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'lineItems' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">Line Items</h3>
+                  <Button variant="outline" size="sm" onClick={addLine}>
+                    <Plus className="w-4 h-4 mr-1" /> Add Line
+                  </Button>
+                </div>
+
+                {lineItems.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                    <p>No line items</p>
+                    <Button variant="outline" size="sm" className="mt-3" onClick={addLine}>
+                      <Plus className="w-4 h-4 mr-1" /> Add Line Item
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {lineItems.map((item, index) => (
+                      <div key={index} className="p-4 bg-slate-50 rounded-lg">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 space-y-3">
+                            <input
+                              type="text"
+                              value={item.description}
+                              onChange={(e) => handleLineChange(index, 'description', e.target.value)}
+                              placeholder="Description"
+                              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                            />
+                            <div className="grid grid-cols-3 gap-3">
+                              <div>
+                                <label className="block text-xs text-slate-500 mb-1">Qty</label>
+                                <input
+                                  type="number"
+                                  value={item.quantity}
+                                  onChange={(e) => handleLineChange(index, 'quantity', parseFloat(e.target.value) || 0)}
+                                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-500 mb-1">Unit Price</label>
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={item.unitPrice}
+                                  onChange={(e) => handleLineChange(index, 'unitPrice', parseFloat(e.target.value) || 0)}
+                                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-xs text-slate-500 mb-1">Total</label>
+                                <p className="px-3 py-2 text-sm font-medium text-slate-900">
+                                  €{item.amount.toFixed(2)}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => removeLine(index)}
+                            className="p-1 text-slate-400 hover:text-red-500"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'exports' && (
+              <div className="text-center py-12 text-slate-500">
+                <Download className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                <p>No exports yet</p>
+              </div>
+            )}
+
+            {activeTab === 'duplicates' && (
+              <div className="text-center py-12 text-slate-500">
+                <FileText className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+                <p>No duplicates found</p>
+              </div>
             )}
           </div>
+        </div>
 
+        {/* Right Panel - PDF Preview */}
+        <div className="flex-1 bg-slate-100 flex flex-col overflow-hidden">
+          {/* PDF Toolbar */}
+          <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <button className="p-1.5 hover:bg-slate-100 rounded" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}>
+                <ChevronLeft className="w-4 h-4 text-slate-600" />
+              </button>
+              <span className="text-sm text-slate-600">
+                <input 
+                  type="number" 
+                  value={currentPage}
+                  onChange={(e) => setCurrentPage(parseInt(e.target.value) || 1)}
+                  className="w-8 text-center border border-slate-200 rounded"
+                />
+                <span className="mx-1">sur {totalPages}</span>
+              </span>
+              <button className="p-1.5 hover:bg-slate-100 rounded" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}>
+                <ChevronRight className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="p-1.5 hover:bg-slate-100 rounded" onClick={() => setZoom(Math.max(25, zoom - 25))}>
+                <ZoomOut className="w-4 h-4 text-slate-600" />
+              </button>
+              <select 
+                value={zoom}
+                onChange={(e) => setZoom(parseInt(e.target.value))}
+                className="text-sm border border-slate-200 rounded px-2 py-1"
+              >
+                <option value={50}>50%</option>
+                <option value={75}>75%</option>
+                <option value={100}>100%</option>
+                <option value={125}>125%</option>
+                <option value={150}>150%</option>
+              </select>
+              <button className="p-1.5 hover:bg-slate-100 rounded" onClick={() => setZoom(Math.min(200, zoom + 25))}>
+                <ZoomIn className="w-4 h-4 text-slate-600" />
+              </button>
+              <div className="w-px h-5 bg-slate-200 mx-2" />
+              <button className="p-1.5 hover:bg-slate-100 rounded">
+                <RotateCw className="w-4 h-4 text-slate-600" />
+              </button>
+              <button className="p-1.5 hover:bg-slate-100 rounded">
+                <Maximize2 className="w-4 h-4 text-slate-600" />
+              </button>
+            </div>
+          </div>
+
+          {/* PDF Viewer */}
+          <div className="flex-1 overflow-auto flex items-center justify-center p-8">
+            {isAnalyzing && (
+              <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-violet-600 text-white px-4 py-2 rounded-full text-sm flex items-center gap-2 shadow-lg z-10">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Analyse IA en cours...
+              </div>
+            )}
+            
+            {document.fileUrl ? (
+              <div 
+                style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}
+                className="transition-transform duration-200"
+              >
+                {isPDF ? (
+                  <iframe 
+                    src={document.fileUrl} 
+                    className="bg-white rounded-lg shadow-xl"
+                    style={{ width: '700px', height: '900px' }}
+                    title={document.filename}
+                  />
+                ) : isImage ? (
+                  <img 
+                    src={document.fileUrl} 
+                    alt={document.filename}
+                    className="max-w-full rounded-lg shadow-xl"
+                    style={{ maxHeight: '800px' }}
+                  />
+                ) : (
+                  <div className="bg-white rounded-lg shadow-xl p-20 text-center">
+                    <FileText className="w-24 h-24 mx-auto mb-4 text-slate-300" />
+                    <p className="text-slate-500">Aperçu non disponible</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow-xl p-20 text-center">
+                <FileText className="w-24 h-24 mx-auto mb-4 text-slate-300" />
+                <p className="text-slate-500">Aucun fichier</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>

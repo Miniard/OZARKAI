@@ -13,11 +13,12 @@ import {
   Save, 
   Loader2,
   Crown,
-  Calendar,
   AlertTriangle,
   Download,
   FileJson,
-  MessageCircle
+  MessageCircle,
+  Plus,
+  MoreVertical
 } from 'lucide-react';
 import { WhatsAppSetup } from '@/components/whatsapp/WhatsAppSetup';
 
@@ -44,10 +45,48 @@ export function SettingsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [organizations, setOrganizations] = useState<any[]>([]);
+  const [newOrgName, setNewOrgName] = useState('');
+  const [creatingOrg, setCreatingOrg] = useState(false);
+  const [showNewOrgInput, setShowNewOrgInput] = useState(false);
 
   useEffect(() => {
     fetchProfile();
+    fetchOrganizations();
   }, []);
+
+  const fetchOrganizations = async () => {
+    try {
+      const response = await fetch('/api/companies');
+      if (response.ok) {
+        const data = await response.json();
+        setOrganizations(data);
+      }
+    } catch (error) {
+      console.error('Error fetching organizations:', error);
+    }
+  };
+
+  const createOrganization = async () => {
+    if (!newOrgName.trim()) return;
+    setCreatingOrg(true);
+    try {
+      const response = await fetch('/api/companies', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newOrgName, companyType: 'MICRO_ENTREPRISE', vatRegime: 'FRANCHISE_BASE' }),
+      });
+      if (response.ok) {
+        await fetchOrganizations();
+        setNewOrgName('');
+        setShowNewOrgInput(false);
+      }
+    } catch (error) {
+      console.error('Error creating organization:', error);
+    } finally {
+      setCreatingOrg(false);
+    }
+  };
 
   const fetchProfile = async () => {
     try {
@@ -117,6 +156,91 @@ export function SettingsPage() {
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
+      {/* Organizations / Workspaces */}
+      <Card padding="lg">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+              <Building2 className="w-5 h-5 text-indigo-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Organizations</h2>
+              <p className="text-sm text-slate-500">Manage your workspaces</p>
+            </div>
+          </div>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setShowNewOrgInput(true)}
+          >
+            <Plus className="w-4 h-4 mr-1" />
+            New Organization
+          </Button>
+        </div>
+
+        {/* New org input */}
+        {showNewOrgInput && (
+          <div className="mb-4 p-4 bg-slate-50 rounded-xl border border-slate-200">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Organization name
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newOrgName}
+                onChange={(e) => setNewOrgName(e.target.value)}
+                placeholder="My Organization"
+                className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500/20"
+              />
+              <Button onClick={createOrganization} disabled={creatingOrg || !newOrgName.trim()}>
+                {creatingOrg ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create'}
+              </Button>
+              <Button variant="outline" onClick={() => { setShowNewOrgInput(false); setNewOrgName(''); }}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Organizations list */}
+        <div className="space-y-2">
+          {organizations.map((org) => (
+            <div 
+              key={org.id}
+              className="flex items-center justify-between p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-amber-500 flex items-center justify-center">
+                  <span className="text-white font-bold">{org.name?.charAt(0) || 'O'}</span>
+                </div>
+                <div>
+                  <p className="font-medium text-slate-900">{org.name}</p>
+                  <p className="text-xs text-slate-500">
+                    {org._count?.documents || 0} documents • Created {new Date(org.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <button className="p-2 hover:bg-slate-200 rounded-lg transition-colors">
+                <MoreVertical className="w-4 h-4 text-slate-400" />
+              </button>
+            </div>
+          ))}
+          
+          {organizations.length === 0 && !showNewOrgInput && (
+            <div className="text-center py-8 text-slate-500">
+              <Building2 className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <p>No organizations yet</p>
+              <button 
+                onClick={() => setShowNewOrgInput(true)}
+                className="text-primary-600 hover:text-primary-700 text-sm mt-2"
+              >
+                Create your first organization
+              </button>
+            </div>
+          )}
+        </div>
+      </Card>
+
       {/* Profil */}
       <Card padding="lg">
         <div className="flex items-center gap-3 mb-6">
