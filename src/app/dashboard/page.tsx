@@ -23,7 +23,10 @@ import {
   FileText,
   SlidersHorizontal,
   RefreshCw,
-  Building2
+  Building2,
+  Shield,
+  CreditCard,
+  HelpCircle
 } from 'lucide-react';
 
 // Types pour les filtres
