@@ -26,7 +26,9 @@ import {
   Building2,
   Shield,
   CreditCard,
-  HelpCircle
+  HelpCircle,
+  Download,
+  ChevronDown
 } from 'lucide-react';
 
 // Types pour les filtres
@@ -50,6 +52,34 @@ export default function DashboardPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState<DocumentFilter>('all');
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  // Export functions
+  const handleExport = async (format: 'csv' | 'json') => {
+    if (!selectedCompanyId) return;
+    setIsExporting(true);
+    try {
+      const response = await fetch(`/api/documents/export?companyId=${selectedCompanyId}&format=${format}`);
+      if (!response.ok) throw new Error('Erreur export');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = `factures-${format === 'csv' ? 'export' : 'data'}.${format}`;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('Erreur lors de l\'export');
+    } finally {
+      setIsExporting(false);
+      setShowExportMenu(false);
+    }
+  };
 
   // Auth Check
   useEffect(() => {
@@ -279,11 +309,38 @@ export default function DashboardPage() {
                     Filters
                   </button>
 
-                  {/* Actions */}
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white">
-                    <span className="text-slate-400">:</span>
-                    Actions
-                  </button>
+                  {/* Export Dropdown */}
+                  <div className="relative">
+                    <button 
+                      onClick={() => setShowExportMenu(!showExportMenu)}
+                      className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white"
+                    >
+                      <Download className="w-4 h-4" />
+                      Exporter
+                      <ChevronDown className="w-3 h-3" />
+                    </button>
+                    
+                    {showExportMenu && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                        <button
+                          onClick={() => handleExport('csv')}
+                          disabled={isExporting}
+                          className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Exporter en CSV
+                        </button>
+                        <button
+                          onClick={() => handleExport('json')}
+                          disabled={isExporting}
+                          className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          Exporter en JSON
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}

@@ -224,7 +224,7 @@ export function DocumentsTable({
               const vendorName = doc.supplier || doc.analysisData?.fournisseur || 'Unknown';
               const vendorDesc = doc.analysisData?.description || doc.filename;
               const vendorColor = getVendorColor(vendorName);
-              const sourceEmail = doc.analysisData?.sourceEmail || 'stove83130@gmail.com';
+              const sourceEmail = doc.analysisData?.sourceEmail || doc.source || 'Upload manuel';
               const billedTo = doc.analysisData?.billedTo || 'N/A';
               const hasLinked = Math.random() > 0.7; // Simulé
 
