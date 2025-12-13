@@ -64,8 +64,12 @@ export function ConnectorHub({ companyId, onDocumentsImported }: ConnectorHubPro
 
       // Vérifier Gmail
       try {
-        const gmailRes = await fetch('/api/gmail/status');
+        const gmailRes = await fetch('/api/gmail/status', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const gmailData = await gmailRes.json();
+        console.log('📧 Gmail status response:', gmailData);
         if (gmailData.connected) {
           connectedAccounts.push({
             id: 'gmail-1',
@@ -83,8 +87,12 @@ export function ConnectorHub({ companyId, onDocumentsImported }: ConnectorHubPro
 
       // Vérifier Outlook
       try {
-        const outlookRes = await fetch('/api/outlook/status');
+        const outlookRes = await fetch('/api/outlook/status', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
         const outlookData = await outlookRes.json();
+        console.log('📧 Outlook status response:', outlookData);
         if (outlookData.connected) {
           connectedAccounts.push({
             id: 'outlook-1',

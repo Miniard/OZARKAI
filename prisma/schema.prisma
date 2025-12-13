@@ -34,6 +34,10 @@ model User {
   outlookRefreshToken String?   @db.Text
   outlookTokenExpiry  DateTime?
   
+  // Sync automatique - Date de dernière synchronisation
+  lastGmailSync       DateTime?  // Dernière sync Gmail (pour ne récupérer que les nouveaux emails)
+  lastOutlookSync     DateTime?  // Dernière sync Outlook
+  
   // WhatsApp Business (pour recevoir des factures par WhatsApp)
   whatsappConnected   Boolean   @default(false)
   whatsappPhoneNumber String?   // Numéro de téléphone vérifié

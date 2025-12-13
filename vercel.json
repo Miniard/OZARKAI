@@ -7,8 +7,17 @@
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/sync/auto/route.ts": {
+      "maxDuration": 300
     }
   },
+  "crons": [
+    {
+      "path": "/api/sync/auto",
+      "schedule": "*/15 * * * *"
+    }
+  ],
   "env": {
     "PRISMA_GENERATE_NO_ENGINE": "true"
   }

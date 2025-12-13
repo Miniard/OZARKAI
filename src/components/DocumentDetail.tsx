@@ -603,12 +603,12 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
                       </Button>
                     </div>
                   ) : (
-                    <iframe 
-                      src={document.fileUrl} 
-                      className="bg-white rounded-lg shadow-xl"
-                      style={{ width: '700px', height: '900px' }}
-                      title={document.filename}
-                    />
+                  <iframe 
+                    src={document.fileUrl} 
+                    className="bg-white rounded-lg shadow-xl"
+                    style={{ width: '700px', height: '900px' }}
+                    title={document.filename}
+                  />
                   )
                 ) : isImage ? (
                   <img 

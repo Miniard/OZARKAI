@@ -318,8 +318,8 @@ export default function DashboardPage() {
                       <Download className="w-4 h-4" />
                       Exporter
                       <ChevronDown className="w-3 h-3" />
-                    </button>
-                    
+                  </button>
+
                     {showExportMenu && (
                       <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
                         <button
@@ -337,7 +337,7 @@ export default function DashboardPage() {
                         >
                           <FileText className="w-4 h-4" />
                           Exporter en JSON
-                        </button>
+                  </button>
                       </div>
                     )}
                   </div>

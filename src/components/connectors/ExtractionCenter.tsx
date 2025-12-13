@@ -72,9 +72,10 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
     
     try {
       const [gmailRes, outlookRes] = await Promise.all([
-        fetch('/api/gmail/status').then(r => r.json()).catch(() => ({ connected: false })),
-        fetch('/api/outlook/status').then(r => r.json()).catch(() => ({ connected: false })),
+        fetch('/api/gmail/status', { credentials: 'include', cache: 'no-store' }).then(r => r.json()).catch(() => ({ connected: false })),
+        fetch('/api/outlook/status', { credentials: 'include', cache: 'no-store' }).then(r => r.json()).catch(() => ({ connected: false })),
       ]);
+      console.log('📧 Connection status:', { gmail: gmailRes, outlook: outlookRes });
       
       if (gmailRes.connected && gmailRes.email) {
         emails.push({ email: gmailRes.email, source: 'gmail' });
@@ -208,19 +209,19 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
         setExtractionProgress({ current: i + 1, total: emails.length });
         
         try {
-          const res = await fetch(importEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              emailId: emails[i].id,
-              companyId,
-            }),
-          });
+        const res = await fetch(importEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailId: emails[i].id,
+            companyId,
+          }),
+        });
 
           if (res.ok) {
-            const data = await res.json();
-            if (data.importedCount) {
-              totalImported += data.importedCount;
+        const data = await res.json();
+        if (data.importedCount) {
+          totalImported += data.importedCount;
             }
           } else {
             importErrors++;
@@ -296,8 +297,8 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-slate-700">
-                  Compte de messagerie
-                </label>
+                Compte de messagerie
+              </label>
                 <button 
                   onClick={checkConnections}
                   disabled={isCheckingConnections}
@@ -480,19 +481,19 @@ export function ExtractionCenter({ companyId, onDocumentsImported }: ExtractionC
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <Button
-                  onClick={handleExtract}
+              <Button
+                onClick={handleExtract}
                   disabled={isExtracting || !selectedEmail || !companyId}
-                  className="bg-primary-500 hover:bg-primary-600"
-                >
-                  {isExtracting ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Download className="w-4 h-4 mr-2" />
-                  )}
-                  Lancer l'extraction
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
+                className="bg-primary-500 hover:bg-primary-600"
+              >
+                {isExtracting ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Download className="w-4 h-4 mr-2" />
+                )}
+                Lancer l'extraction
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
               )}
             </div>
           </div>
