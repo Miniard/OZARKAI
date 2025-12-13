@@ -16,14 +16,9 @@
 [functions]
   # Répertoire des fonctions (géré automatiquement par le plugin Next.js)
   directory = ".netlify/functions"
-  # Timeout des fonctions (max 26s sur plan gratuit, 60s sur Pro)
-  timeout = 26
-
-# Redirections pour SPA et API
-[[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/___netlify-handler/:splat"
-  status = 200
+  # Modules Node externes
+  node_bundler = "esbuild"
+  included_files = ["node_modules/.prisma/**"]
 
 # Headers de sécurité
 [[headers]]
