@@ -12,34 +12,87 @@ import { getValidGmailToken } from '@/lib/oauth-refresh';
 
 const GMAIL_API_URL = 'https://gmail.googleapis.com/gmail/v1';
 
-// Mots-clés pour détecter les factures/reçus (insensible à la casse)
-const INVOICE_KEYWORDS = [
-  // Français
-  'facture', 'reçu', 'recu', 'commande', 'paiement', 'achat', 'ticket',
-  'bon de commande', 'avoir', 'devis', 'proforma', 'quittance',
-  'relevé', 'note de frais', 'justificatif',
-  // Anglais
-  'invoice', 'receipt', 'order', 'payment', 'purchase', 'billing',
-  'confirmation', 'statement',
-  // Prix/montants
-  '€', 'eur', 'euro', '$', 'usd', 'total', 'montant', 'amount',
+// ============================================
+// DÉTECTION INTELLIGENTE DE FACTURES
+// Une facture a toujours : un montant, un émetteur, souvent un numéro
+// ============================================
+
+// Termes qui indiquent CLAIREMENT une facture
+const INVOICE_TERMS = [
+  'facture', 'invoice', 'reçu', 'recu', 'receipt',
+  'avoir', 'devis', 'quote', 'proforma',
+  'note de frais', 'quittance',
+];
+
+// Termes de facturation/paiement
+const BILLING_TERMS = [
+  'prélèvement', 'prelevement', 'prélevé', 'preleve',
+  'débité', 'debite', 'débit', 'debit',
+  'paiement', 'payment', 'payé', 'paid',
+  'votre commande', 'your order',
+  'confirmation de paiement', 'payment confirmation',
+  'transaction', 'achat', 'purchase',
+  'abonnement', 'subscription',
+  'renouvellement', 'renewal',
+];
+
+// Termes de montant (indiquent un document financier)
+const AMOUNT_TERMS = [
+  'montant', 'amount', 'total',
   'ttc', 'ht', 'tva', 'vat', 'tax',
-  // Expéditeurs typiques
-  'noreply', 'no-reply', 'billing', 'comptabilite', 'finance',
-  'paypal', 'stripe', 'amazon', 'apple', 'google play',
+  'prix', 'price', 'tarif',
+  'sous-total', 'subtotal',
 ];
 
 // Mots-clés dans les noms de fichiers
 const FILENAME_KEYWORDS = [
-  'facture', 'invoice', 'recu', 'receipt', 'ticket', 'commande', 'order',
-  'paiement', 'payment', 'avoir', 'devis', 'quote',
+  'facture', 'invoice', 'recu', 'receipt', 'avoir', 'devis', 'quote',
 ];
 
-// Vérifie si un texte contient des mots-clés de facture
-function containsInvoiceKeywords(text: string): boolean {
+// EXCLUSIONS STRICTES (newsletters, marketing)
+const EXCLUDE_TERMS = [
+  'newsletter', 'unsubscribe', 'désabonner', 'se désinscrire',
+  'voir dans le navigateur', 'view in browser',
+  'soldes', 'promo', 'promotion', 'offre exclusive',
+  'nouveautés', 'new arrivals', 'nouvelle collection',
+  'découvrez', 'discover',
+];
+
+// Regex pour détecter des montants (12,99 €, $50.00, 100€, etc.)
+const PRICE_REGEX = /(\d+[,\.]\d{2}\s*[€$£]|[€$£]\s*\d+[,\.]\d{2}|\d+\s*[€$£]|\d+[,\.]\d{2}\s*(eur|usd|euros?))/i;
+
+// Vérifie si le texte contient un prix
+function containsPrice(text: string): boolean {
+  if (!text) return false;
+  return PRICE_REGEX.test(text);
+}
+
+// Vérifie si c'est clairement une facture (terme explicite)
+function hasInvoiceTerm(text: string): boolean {
   if (!text) return false;
   const lowerText = text.toLowerCase();
-  return INVOICE_KEYWORDS.some(keyword => lowerText.includes(keyword.toLowerCase()));
+  return INVOICE_TERMS.some(term => lowerText.includes(term));
+}
+
+// Vérifie si c'est un email de facturation/paiement
+function hasBillingTerm(text: string): boolean {
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  return BILLING_TERMS.some(term => lowerText.includes(term));
+}
+
+// Vérifie si contient des termes de montant
+function hasAmountTerm(text: string): boolean {
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  return AMOUNT_TERMS.some(term => lowerText.includes(term));
+}
+
+// Vérifie si c'est du spam/newsletter à exclure
+function isExcluded(text: string): boolean {
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  return EXCLUDE_TERMS.some(term => lowerText.includes(term));
 }
 
 // Vérifie si un nom de fichier ressemble à une facture
@@ -96,7 +149,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { companyId, startDate, endDate, maxResults = 50 } = body;
+    const { companyId, startDate, endDate, maxResults = 100 } = body;
 
     if (!companyId) {
       return NextResponse.json({ error: 'companyId manquant' }, { status: 400 });
@@ -130,9 +183,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Construire la requête de recherche Gmail
-    // Rechercher les emails qui ressemblent à des factures (avec OU sans pièce jointe)
-    // On utilise des mots-clés Gmail pour pré-filtrer
-    let query = '(facture OR invoice OR reçu OR receipt OR commande OR order OR paiement OR payment)';
+    // Rechercher TOUS les emails qui ressemblent à des factures (avec ou sans PJ)
+    // On filtre ensuite avec notre algorithme intelligent
+    let query = '(facture OR invoice OR reçu OR receipt OR paiement OR payment OR commande OR order OR prélèvement OR abonnement) -category:promotions -category:social';
     
     // Ajouter les filtres de date si fournis
     if (startDate) {
@@ -215,30 +268,49 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // 🔍 FILTRE INTELLIGENT : Vérifier si c'est probablement une facture
+        // 🔍 DÉTECTION INTELLIGENTE DE FACTURE
+        // Une facture a : terme facture OU (terme billing + montant) OU (montant dans subject)
         const snippet = msgData.snippet || '';
         const bodyText = extractBodyText(parts);
+        const subjectLower = subject.toLowerCase();
+        const allText = `${subject} ${snippet} ${bodyText}`;
         
-        // Vérifier les différents critères
-        const hasInvoiceInSubject = containsInvoiceKeywords(subject);
-        const hasInvoiceInFrom = containsInvoiceKeywords(from);
-        const hasInvoiceInBody = containsInvoiceKeywords(snippet) || containsInvoiceKeywords(bodyText);
-        const hasInvoiceFilename = attachments.some(a => isInvoiceFilename(a.filename));
+        // Critères de détection
+        const hasInvoiceTermInSubject = hasInvoiceTerm(subject);
+        const hasInvoiceTermInBody = hasInvoiceTerm(allText);
+        const hasBillingTermInSubject = hasBillingTerm(subject);
+        const hasBillingTermInBody = hasBillingTerm(allText);
+        const hasPriceInSubject = containsPrice(subject);
+        const hasPriceInBody = containsPrice(allText);
+        const hasAmountTermInBody = hasAmountTerm(allText);
+        const hasInvoiceFile = attachments.some(a => isInvoiceFilename(a.filename));
         
-        // Score de confiance : plus il y a de critères, plus c'est probablement une facture
-        const isLikelyInvoice = hasInvoiceInSubject || hasInvoiceInFrom || hasInvoiceInBody || hasInvoiceFilename;
+        // Exclure newsletters/promos
+        const excluded = isExcluded(allText);
         
-        // Détecter si c'est une facture HTML (pas de PJ mais contenu facture)
-        const hasHtmlContent = parts.some((p: any) => p.mimeType === 'text/html');
-        const isHtmlInvoice = hasHtmlContent && isLikelyInvoice && attachments.length === 0;
+        // LOGIQUE DE DÉTECTION :
+        // ✅ FACTURE si :
+        //    - Terme "facture/invoice/reçu" dans sujet OU
+        //    - Nom de fichier = facture/invoice OU
+        //    - (Terme billing + prix) dans le même email OU
+        //    - Prix dans le sujet + terme montant dans body
+        const isInvoice = !excluded && (
+          hasInvoiceTermInSubject ||
+          hasInvoiceFile ||
+          (hasInvoiceTermInBody && hasPriceInBody) ||
+          (hasBillingTermInSubject && hasPriceInBody) ||
+          (hasPriceInSubject && hasAmountTermInBody) ||
+          (hasBillingTermInBody && hasPriceInBody && hasAmountTermInBody)
+        );
         
         // Type de facture
-        const invoiceType = attachments.length > 0 ? 'attachment' : (isHtmlInvoice ? 'html' : 'unknown');
+        const invoiceType = attachments.length > 0 ? 'attachment' : 'html';
+        const hasHtmlContent = parts.some((p: any) => p.mimeType === 'text/html');
         
-        console.log(`📎 Email "${subject}" - ${attachments.length} PJ - Type: ${invoiceType} - Facture: ${isLikelyInvoice ? '✅' : '❌'}`);
+        console.log(`📧 "${subject.substring(0, 50)}..." - ${isInvoice ? '✅ FACTURE' : '❌'} (inv:${hasInvoiceTermInSubject}, bill:${hasBillingTermInSubject}, price:${hasPriceInSubject}, file:${hasInvoiceFile})`);
 
-        // Garder les emails qui ressemblent à des factures (avec OU sans PJ)
-        if (isLikelyInvoice) {
+        // Garder toutes les factures (avec ou sans PJ)
+        if (isInvoice) {
           emails.push({
             id: msg.id,
             subject,
@@ -246,16 +318,8 @@ export async function POST(request: NextRequest) {
             date: date.toISOString(),
             attachmentCount: attachments.length,
             attachments,
-            // Type de facture : 'attachment' (PDF/image), 'html' (dans le corps)
             invoiceType,
             hasHtmlContent,
-            // Infos de détection pour debug
-            invoiceScore: {
-              subject: hasInvoiceInSubject,
-              from: hasInvoiceInFrom,
-              body: hasInvoiceInBody,
-              filename: hasInvoiceFilename,
-            },
           });
         }
       } catch (e) {
