@@ -589,27 +589,14 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
                 className="transition-transform duration-200"
               >
                 {isPDF ? (
-                  // Pour les PDF base64, utiliser embed ou object au lieu de iframe
-                  document.fileUrl.startsWith('data:') ? (
-                    <div className="bg-white rounded-lg shadow-xl p-12 text-center" style={{ width: '700px' }}>
-                      <FileText className="w-24 h-24 mx-auto mb-4 text-primary-300" />
-                      <p className="text-slate-600 mb-2 font-medium">{document.filename}</p>
-                      <p className="text-slate-500 text-sm mb-6">
-                        L'aperçu PDF n'est pas disponible pour les fichiers stockés en cloud.
-                      </p>
-                      <Button onClick={handleDownload} className="bg-primary-500 hover:bg-primary-600">
-                        <Download className="w-4 h-4 mr-2" />
-                        Télécharger le PDF
-                      </Button>
-                    </div>
-                  ) : (
-                  <iframe 
+                  // Pour les PDF, utiliser embed qui supporte les data URLs
+                  <embed 
                     src={document.fileUrl} 
+                    type="application/pdf"
                     className="bg-white rounded-lg shadow-xl"
                     style={{ width: '700px', height: '900px' }}
                     title={document.filename}
                   />
-                  )
                 ) : isImage ? (
                   <img 
                     src={document.fileUrl} 
