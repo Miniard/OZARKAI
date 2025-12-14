@@ -12,6 +12,59 @@ import { getValidGmailToken } from '@/lib/oauth-refresh';
 
 const GMAIL_API_URL = 'https://gmail.googleapis.com/gmail/v1';
 
+// Mots-clés pour détecter les factures/reçus (insensible à la casse)
+const INVOICE_KEYWORDS = [
+  // Français
+  'facture', 'reçu', 'recu', 'commande', 'paiement', 'achat', 'ticket',
+  'bon de commande', 'avoir', 'devis', 'proforma', 'quittance',
+  'relevé', 'note de frais', 'justificatif',
+  // Anglais
+  'invoice', 'receipt', 'order', 'payment', 'purchase', 'billing',
+  'confirmation', 'statement',
+  // Prix/montants
+  '€', 'eur', 'euro', '$', 'usd', 'total', 'montant', 'amount',
+  'ttc', 'ht', 'tva', 'vat', 'tax',
+  // Expéditeurs typiques
+  'noreply', 'no-reply', 'billing', 'comptabilite', 'finance',
+  'paypal', 'stripe', 'amazon', 'apple', 'google play',
+];
+
+// Mots-clés dans les noms de fichiers
+const FILENAME_KEYWORDS = [
+  'facture', 'invoice', 'recu', 'receipt', 'ticket', 'commande', 'order',
+  'paiement', 'payment', 'avoir', 'devis', 'quote',
+];
+
+// Vérifie si un texte contient des mots-clés de facture
+function containsInvoiceKeywords(text: string): boolean {
+  if (!text) return false;
+  const lowerText = text.toLowerCase();
+  return INVOICE_KEYWORDS.some(keyword => lowerText.includes(keyword.toLowerCase()));
+}
+
+// Vérifie si un nom de fichier ressemble à une facture
+function isInvoiceFilename(filename: string): boolean {
+  if (!filename) return false;
+  const lowerFilename = filename.toLowerCase();
+  return FILENAME_KEYWORDS.some(keyword => lowerFilename.includes(keyword));
+}
+
+// Extrait le texte du body d'un email (snippet ou contenu)
+function extractBodyText(parts: any[], text: string = ''): string {
+  for (const part of parts) {
+    if (part.mimeType === 'text/plain' && part.body?.data) {
+      try {
+        const decoded = Buffer.from(part.body.data.replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString('utf-8');
+        text += ' ' + decoded.substring(0, 1000); // Limite pour performance
+      } catch {}
+    }
+    if (part.parts) {
+      text = extractBodyText(part.parts, text);
+    }
+  }
+  return text;
+}
+
 // Fonction récursive pour trouver toutes les pièces jointes (même imbriquées)
 function findAttachments(parts: any[], attachments: any[] = []): any[] {
   for (const part of parts) {
@@ -77,8 +130,9 @@ export async function POST(request: NextRequest) {
     }
 
     // Construire la requête de recherche Gmail
-    // Rechercher les emails avec pièces jointes PDF/images (sans filtre de mots-clés pour être moins restrictif)
-    let query = 'has:attachment (filename:pdf OR filename:jpg OR filename:jpeg OR filename:png)';
+    // Rechercher les emails qui ressemblent à des factures (avec OU sans pièce jointe)
+    // On utilise des mots-clés Gmail pour pré-filtrer
+    let query = '(facture OR invoice OR reçu OR receipt OR commande OR order OR paiement OR payment)';
     
     // Ajouter les filtres de date si fournis
     if (startDate) {
@@ -161,9 +215,30 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        console.log(`📎 Email "${subject}" - ${attachments.length} pièce(s) jointe(s) trouvée(s)`);
+        // 🔍 FILTRE INTELLIGENT : Vérifier si c'est probablement une facture
+        const snippet = msgData.snippet || '';
+        const bodyText = extractBodyText(parts);
+        
+        // Vérifier les différents critères
+        const hasInvoiceInSubject = containsInvoiceKeywords(subject);
+        const hasInvoiceInFrom = containsInvoiceKeywords(from);
+        const hasInvoiceInBody = containsInvoiceKeywords(snippet) || containsInvoiceKeywords(bodyText);
+        const hasInvoiceFilename = attachments.some(a => isInvoiceFilename(a.filename));
+        
+        // Score de confiance : plus il y a de critères, plus c'est probablement une facture
+        const isLikelyInvoice = hasInvoiceInSubject || hasInvoiceInFrom || hasInvoiceInBody || hasInvoiceFilename;
+        
+        // Détecter si c'est une facture HTML (pas de PJ mais contenu facture)
+        const hasHtmlContent = parts.some((p: any) => p.mimeType === 'text/html');
+        const isHtmlInvoice = hasHtmlContent && isLikelyInvoice && attachments.length === 0;
+        
+        // Type de facture
+        const invoiceType = attachments.length > 0 ? 'attachment' : (isHtmlInvoice ? 'html' : 'unknown');
+        
+        console.log(`📎 Email "${subject}" - ${attachments.length} PJ - Type: ${invoiceType} - Facture: ${isLikelyInvoice ? '✅' : '❌'}`);
 
-        if (attachments.length > 0) {
+        // Garder les emails qui ressemblent à des factures (avec OU sans PJ)
+        if (isLikelyInvoice) {
           emails.push({
             id: msg.id,
             subject,
@@ -171,6 +246,16 @@ export async function POST(request: NextRequest) {
             date: date.toISOString(),
             attachmentCount: attachments.length,
             attachments,
+            // Type de facture : 'attachment' (PDF/image), 'html' (dans le corps)
+            invoiceType,
+            hasHtmlContent,
+            // Infos de détection pour debug
+            invoiceScore: {
+              subject: hasInvoiceInSubject,
+              from: hasInvoiceInFrom,
+              body: hasInvoiceInBody,
+              filename: hasInvoiceFilename,
+            },
           });
         }
       } catch (e) {
@@ -178,10 +263,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    console.log(`✅ Scan terminé: ${emails.length} factures trouvées sur ${messageIds.length} emails avec PJ`);
+    
     return NextResponse.json({
       success: true,
       emails,
       totalFound: messageIds.length,
+      invoicesFound: emails.length,
       query,
     });
 

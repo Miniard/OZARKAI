@@ -195,8 +195,10 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
                   document.filename?.toLowerCase().endsWith('.pdf');
     const isImage = document.fileType?.startsWith('image/') || 
                     /\.(jpg|jpeg|png|gif|webp)$/i.test(document.filename || '');
+    const isHTML = document.fileType === 'text/html' || 
+                   document.filename?.toLowerCase().endsWith('.html');
 
-    console.log('📁 Type de fichier:', isPDF ? 'PDF' : isImage ? 'IMAGE' : 'AUTRE');
+    console.log('📁 Type de fichier:', isPDF ? 'PDF' : isImage ? 'IMAGE' : isHTML ? 'HTML' : 'AUTRE');
     console.log('📁 fileType:', document.fileType);
     console.log('📁 filename:', document.filename);
 
@@ -332,8 +334,72 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
       analysisResult = JSON.parse(cleanJson);
       console.log('✅ [ANALYZE] JSON parsé avec succès');
 
+    } else if (isHTML) {
+      // === ANALYSE HTML : Extraire le texte du HTML puis analyser avec GPT-4 ===
+      console.log('🌐 [ANALYZE] Mode HTML : extraction texte + GPT-4');
+      
+      let htmlText = '';
+      
+      if (document.fileUrl.startsWith('data:')) {
+        console.log('📁 [ANALYZE] HTML en base64...');
+        const base64Data = document.fileUrl.split(',')[1];
+        const htmlContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+        
+        // Extraire le texte du HTML (enlever les balises)
+        htmlText = htmlContent
+          .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Enlever les styles
+          .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Enlever les scripts
+          .replace(/<[^>]+>/g, ' ') // Enlever les balises
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#\d+;/g, '')
+          .replace(/\s+/g, ' ') // Normaliser les espaces
+          .trim();
+      } else {
+        return { success: false, error: 'Format de fichier HTML non supporté' };
+      }
+
+      if (!htmlText || htmlText.length < 10) {
+        console.error('❌ [ANALYZE] Texte HTML trop court ou vide');
+        return { success: false, error: 'Impossible d\'extraire le texte du HTML' };
+      }
+
+      console.log('✅ [ANALYZE] Texte HTML extrait, longueur:', htmlText.length);
+      console.log('📝 [ANALYZE] Aperçu (500 chars):', htmlText.substring(0, 500));
+
+      // Analyser avec GPT-4
+      console.log('🤖 [ANALYZE] Envoi du texte HTML à GPT-4...');
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-4o',
+        messages: [
+          {
+            role: 'system',
+            content: ANALYSIS_PROMPT,
+          },
+          {
+            role: 'user',
+            content: `Voici le texte extrait d'un email de facture/reçu. Analyse-le et extrais TOUTES les informations, SURTOUT les lignes de produits/services :\n\n${htmlText.substring(0, 8000)}`,
+          },
+        ],
+        max_tokens: 3000,
+        temperature: 0.1,
+      });
+
+      const responseText = completion.choices[0]?.message?.content || '';
+      console.log('✅ [ANALYZE] Réponse GPT reçue, longueur:', responseText.length);
+      
+      const cleanJson = responseText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .trim();
+      analysisResult = JSON.parse(cleanJson);
+      console.log('✅ [ANALYZE] JSON parsé avec succès');
+
     } else {
-      return { success: false, error: 'Type de fichier non supporté (utilisez PDF ou image)' };
+      return { success: false, error: 'Type de fichier non supporté (utilisez PDF, image ou HTML)' };
     }
 
     console.log('✅ [ANALYZE] Analyse réussie !');

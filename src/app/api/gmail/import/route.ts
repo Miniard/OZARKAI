@@ -33,6 +33,27 @@ function findAttachmentParts(parts: any[], attachments: any[] = []): any[] {
   return attachments;
 }
 
+// Extrait le contenu HTML d'un email (pour les factures sans PJ)
+function extractHtmlContent(parts: any[]): string | null {
+  for (const part of parts) {
+    if (part.mimeType === 'text/html' && part.body?.data) {
+      try {
+        return Buffer.from(
+          part.body.data.replace(/-/g, '+').replace(/_/g, '/'),
+          'base64'
+        ).toString('utf-8');
+      } catch {
+        return null;
+      }
+    }
+    if (part.parts && part.parts.length > 0) {
+      const html = extractHtmlContent(part.parts);
+      if (html) return html;
+    }
+  }
+  return null;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -105,6 +126,51 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`📎 Email ${emailId}: ${attachmentParts.length} pièce(s) jointe(s) à importer`);
+    
+    // Si pas de pièces jointes, essayer d'extraire le HTML (facture dans le corps)
+    if (attachmentParts.length === 0) {
+      const htmlContent = extractHtmlContent(topLevelParts);
+      
+      if (htmlContent && htmlContent.length > 100) {
+        console.log(`📧 Facture HTML détectée (${Math.round(htmlContent.length / 1024)}KB)`);
+        
+        // Extraire le sujet pour le nom de fichier
+        const headers = message.payload?.headers || [];
+        const subject = headers.find((h: any) => h.name.toLowerCase() === 'subject')?.value || 'facture';
+        const sanitizedSubject = subject.replace(/[^a-zA-Z0-9àâäéèêëïîôùûüç\s-]/gi, '').substring(0, 50);
+        const filename = `${sanitizedSubject}.html`;
+        
+        // Créer une data URL pour le HTML
+        const base64Html = Buffer.from(htmlContent).toString('base64');
+        const dataUrl = `data:text/html;base64,${base64Html}`;
+        
+        // Créer l'entrée en base
+        const document = await prisma.document.create({
+          data: {
+            filename,
+            fileUrl: dataUrl,
+            fileType: 'text/html',
+            fileSize: htmlContent.length,
+            companyId,
+            analyzed: false,
+            source: 'GMAIL',
+          },
+        });
+        
+        importedDocuments.push(document.id);
+        
+        // 🔥 ANALYSE IA AUTOMATIQUE
+        try {
+          console.log('🔍 Analyse HTML auto:', document.id, filename);
+          await analyzeDocument(document.id);
+          console.log('✅ Analyse HTML terminée:', filename);
+        } catch (e) {
+          console.error('⚠️ Erreur analyse HTML:', filename, e);
+        }
+      } else {
+        console.log(`⚠️ Email ${emailId}: pas de pièces jointes ni de contenu HTML exploitable`);
+      }
+    }
     
     for (const part of attachmentParts) {
       try {
