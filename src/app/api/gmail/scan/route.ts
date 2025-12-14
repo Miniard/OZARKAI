@@ -12,6 +12,29 @@ import { getValidGmailToken } from '@/lib/oauth-refresh';
 
 const GMAIL_API_URL = 'https://gmail.googleapis.com/gmail/v1';
 
+// Fonction récursive pour trouver toutes les pièces jointes (même imbriquées)
+function findAttachments(parts: any[], attachments: any[] = []): any[] {
+  for (const part of parts) {
+    // Si c'est une pièce jointe
+    if (part.filename && part.filename.length > 0 && part.body) {
+      const ext = part.filename.toLowerCase().split('.').pop();
+      if (['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+        attachments.push({
+          id: part.body.attachmentId,
+          filename: part.filename,
+          mimeType: part.mimeType,
+          size: part.body.size || 0,
+        });
+      }
+    }
+    // Si c'est un multipart, chercher récursivement dans les sous-parties
+    if (part.parts && part.parts.length > 0) {
+      findAttachments(part.parts, attachments);
+    }
+  }
+  return attachments;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await auth();
@@ -96,8 +119,9 @@ export async function POST(request: NextRequest) {
     
     for (const msg of messageIds.slice(0, maxResults)) {
       try {
+        // IMPORTANT: format=full pour avoir les pièces jointes
         const msgResponse = await fetch(
-          `${GMAIL_API_URL}/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+          `${GMAIL_API_URL}/users/me/messages/${msg.id}?format=full`,
           {
             headers: { Authorization: `Bearer ${tokenResult.accessToken}` },
           }
@@ -109,9 +133,9 @@ export async function POST(request: NextRequest) {
         
         // Extraire les headers
         const headers = msgData.payload?.headers || [];
-        const subject = headers.find((h: any) => h.name === 'Subject')?.value || 'Sans objet';
-        const from = headers.find((h: any) => h.name === 'From')?.value || 'Inconnu';
-        const dateStr = headers.find((h: any) => h.name === 'Date')?.value;
+        const subject = headers.find((h: any) => h.name.toLowerCase() === 'subject')?.value || 'Sans objet';
+        const from = headers.find((h: any) => h.name.toLowerCase() === 'from')?.value || 'Inconnu';
+        const dateStr = headers.find((h: any) => h.name.toLowerCase() === 'date')?.value;
         
         let date = new Date();
         if (dateStr) {
@@ -120,9 +144,24 @@ export async function POST(request: NextRequest) {
           } catch {}
         }
 
-        // Compter les pièces jointes
+        // Chercher les pièces jointes récursivement dans toute la structure MIME
         const parts = msgData.payload?.parts || [];
-        const attachments = parts.filter((p: any) => p.filename && p.body?.attachmentId);
+        const attachments = findAttachments(parts);
+        
+        // Aussi vérifier si l'attachement est directement sur le payload (email simple)
+        if (msgData.payload?.filename && msgData.payload?.body?.attachmentId) {
+          const ext = msgData.payload.filename.toLowerCase().split('.').pop();
+          if (['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+            attachments.push({
+              id: msgData.payload.body.attachmentId,
+              filename: msgData.payload.filename,
+              mimeType: msgData.payload.mimeType,
+              size: msgData.payload.body.size || 0,
+            });
+          }
+        }
+
+        console.log(`📎 Email "${subject}" - ${attachments.length} pièce(s) jointe(s) trouvée(s)`);
 
         if (attachments.length > 0) {
           emails.push({
@@ -131,12 +170,7 @@ export async function POST(request: NextRequest) {
             from,
             date: date.toISOString(),
             attachmentCount: attachments.length,
-            attachments: attachments.map((a: any) => ({
-              id: a.body.attachmentId,
-              filename: a.filename,
-              mimeType: a.mimeType,
-              size: a.body.size,
-            })),
+            attachments,
           });
         }
       } catch (e) {
