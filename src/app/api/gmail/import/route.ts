@@ -4,6 +4,7 @@
  * 
  * ANALYSE IA AUTOMATIQUE après import !
  * + REFRESH TOKEN AUTOMATIQUE
+ * + COMPATIBLE SERVERLESS (Netlify/Vercel) - stockage base64
  */
 
 export const dynamic = 'force-dynamic';
@@ -11,12 +12,26 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/db/prisma';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { analyzeDocument } from '@/lib/analyze';
 import { getValidGmailToken } from '@/lib/oauth-refresh';
 
 const GMAIL_API_URL = 'https://gmail.googleapis.com/gmail/v1';
+
+// Fonction récursive pour trouver toutes les pièces jointes (même imbriquées)
+function findAttachmentParts(parts: any[], attachments: any[] = []): any[] {
+  for (const part of parts) {
+    if (part.filename && part.filename.length > 0 && part.body?.attachmentId) {
+      const ext = part.filename.toLowerCase().split('.').pop();
+      if (['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+        attachments.push(part);
+      }
+    }
+    if (part.parts && part.parts.length > 0) {
+      findAttachmentParts(part.parts, attachments);
+    }
+  }
+  return attachments;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -77,11 +92,22 @@ export async function POST(request: NextRequest) {
     const message = await messageResponse.json();
     const importedDocuments: string[] = [];
 
-    // Trouver les pièces jointes
-    const parts = message.payload?.parts || [];
+    // Trouver les pièces jointes récursivement (gère les emails multipart imbriqués)
+    const topLevelParts = message.payload?.parts || [];
+    const attachmentParts = findAttachmentParts(topLevelParts);
     
-    for (const part of parts) {
-      if (part.filename && part.body?.attachmentId) {
+    // Aussi vérifier si l'attachement est directement sur le payload (email simple)
+    if (message.payload?.filename && message.payload?.body?.attachmentId) {
+      const ext = message.payload.filename.toLowerCase().split('.').pop();
+      if (['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
+        attachmentParts.push(message.payload);
+      }
+    }
+
+    console.log(`📎 Email ${emailId}: ${attachmentParts.length} pièce(s) jointe(s) à importer`);
+    
+    for (const part of attachmentParts) {
+      try {
         // Télécharger la pièce jointe
         const attachmentResponse = await fetch(
           `${GMAIL_API_URL}/users/me/messages/${emailId}/attachments/${part.body.attachmentId}`,
@@ -90,38 +116,36 @@ export async function POST(request: NextRequest) {
           }
         );
 
-        if (!attachmentResponse.ok) continue;
+        if (!attachmentResponse.ok) {
+          console.error(`❌ Erreur téléchargement pièce jointe: ${part.filename}`);
+          continue;
+        }
 
         const attachmentData = await attachmentResponse.json();
         
-        // Décoder le contenu base64
-        const content = Buffer.from(
-          attachmentData.data.replace(/-/g, '+').replace(/_/g, '/'),
-          'base64'
-        );
-
-        // Créer le dossier uploads
-        const uploadsDir = join(process.cwd(), 'public', 'uploads');
-        try {
-          await mkdir(uploadsDir, { recursive: true });
-        } catch {}
-
-        // Sauvegarder le fichier
-        const timestamp = Date.now();
-        const randomStr = Math.random().toString(36).substring(2, 10);
-        const sanitizedFilename = part.filename.replace(/[^a-zA-Z0-9.-]/g, '_');
-        const filename = `${timestamp}-${randomStr}-${sanitizedFilename}`;
-        const filepath = join(uploadsDir, filename);
+        // Gmail renvoie du base64url, on convertit en base64 standard
+        const base64Data = attachmentData.data
+          .replace(/-/g, '+')
+          .replace(/_/g, '/');
         
-        await writeFile(filepath, content);
+        // Déterminer le MIME type
+        const mimeType = part.mimeType || 'application/octet-stream';
+        
+        // Créer une data URL (compatible serverless - pas de filesystem)
+        const dataUrl = `data:${mimeType};base64,${base64Data}`;
+        
+        // Calculer la taille approximative
+        const fileSize = Math.round((base64Data.length * 3) / 4);
 
-        // Créer l'entrée en base
+        console.log(`📄 Import: ${part.filename} (${Math.round(fileSize / 1024)}KB)`);
+
+        // Créer l'entrée en base avec la data URL
         const document = await prisma.document.create({
           data: {
             filename: part.filename,
-            fileUrl: `/uploads/${filename}`,
-            fileType: part.mimeType || 'application/octet-stream',
-            fileSize: content.length,
+            fileUrl: dataUrl,
+            fileType: mimeType,
+            fileSize: fileSize,
             companyId,
             analyzed: false,
             source: 'GMAIL',
@@ -132,11 +156,14 @@ export async function POST(request: NextRequest) {
         
         // 🔥 ANALYSE IA AUTOMATIQUE
         try {
-          console.log('🔍 Analyse Gmail auto:', document.id);
+          console.log('🔍 Analyse Gmail auto:', document.id, part.filename);
           await analyzeDocument(document.id);
+          console.log('✅ Analyse terminée:', part.filename);
         } catch (e) {
-          console.error('⚠️ Erreur analyse Gmail:', e);
+          console.error('⚠️ Erreur analyse Gmail:', part.filename, e);
         }
+      } catch (partError) {
+        console.error(`❌ Erreur import pièce jointe ${part.filename}:`, partError);
       }
     }
 
