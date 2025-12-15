@@ -75,8 +75,9 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
     document.analysisData?.lineItems || []
   );
 
-  const isPDF = document.fileType === 'pdf' || document.filename?.toLowerCase().endsWith('.pdf');
+  const isPDF = document.fileType === 'pdf' || document.fileType === 'application/pdf' || document.filename?.toLowerCase().endsWith('.pdf');
   const isImage = document.fileType?.startsWith('image') || /\.(jpg|jpeg|png|gif|webp)$/i.test(document.filename || '');
+  const isHTML = document.fileType === 'text/html' || document.filename?.toLowerCase().endsWith('.html');
 
   // Auto-analyze
   useEffect(() => {
@@ -603,6 +604,15 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
                     alt={document.filename}
                     className="max-w-full rounded-lg shadow-xl"
                     style={{ maxHeight: '800px' }}
+                  />
+                ) : isHTML ? (
+                  // Pour les factures HTML, utiliser un iframe
+                  <iframe 
+                    src={document.fileUrl} 
+                    className="bg-white rounded-lg shadow-xl border-0"
+                    style={{ width: '700px', height: '900px' }}
+                    title={document.filename}
+                    sandbox="allow-same-origin"
                   />
                 ) : (
                   <div className="bg-white rounded-lg shadow-xl p-20 text-center">

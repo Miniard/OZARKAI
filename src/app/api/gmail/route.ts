@@ -108,8 +108,8 @@ export async function GET() {
       return NextResponse.json({ error: 'Token invalide, reconnectez Gmail' }, { status: 401 });
     }
 
-    // Rechercher les emails avec des factures (pièces jointes PDF)
-    const searchQuery = 'has:attachment filename:pdf (facture OR invoice OR reçu OR receipt OR commande)';
+    // Rechercher les emails factures (avec OU sans pièces jointes)
+    const searchQuery = 'subject:(facture OR invoice OR reçu OR receipt OR commande OR order) -category:promotions';
     
     const messagesResponse = await fetch(
       `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${encodeURIComponent(searchQuery)}&maxResults=20`,
@@ -177,6 +177,17 @@ export async function GET() {
           }
         }
 
+        // Détecter si c'est une facture HTML (pas de PJ mais contenu HTML)
+        const hasHtmlContent = fullResponse.ok;
+        const hasPdfAttachments = attachments.some(a => 
+          a.mimeType === 'application/pdf' || 
+          a.filename.toLowerCase().endsWith('.pdf')
+        );
+        const hasImageAttachments = attachments.some(a => 
+          a.mimeType?.startsWith('image/') || 
+          /\.(jpg|jpeg|png|gif|webp)$/i.test(a.filename)
+        );
+
         return {
           id: msg.id,
           threadId: detail.threadId,
@@ -185,14 +196,19 @@ export async function GET() {
           date: getHeader('Date'),
           attachments: attachments.filter(a => 
             a.mimeType === 'application/pdf' || 
-            a.filename.toLowerCase().endsWith('.pdf')
+            a.filename.toLowerCase().endsWith('.pdf') ||
+            a.mimeType?.startsWith('image/') ||
+            /\.(jpg|jpeg|png|gif|webp)$/i.test(a.filename)
           ),
+          // Nouveau : type de facture
+          invoiceType: hasPdfAttachments ? 'pdf' : hasImageAttachments ? 'image' : 'html',
+          hasHtmlContent,
         };
       })
     );
 
-    // Filtrer les emails valides avec des pièces jointes PDF
-    const validEmails = emails.filter(e => e && e.attachments.length > 0);
+    // Garder TOUS les emails factures (avec ou sans PJ)
+    const validEmails = emails.filter(e => e !== null);
 
     return NextResponse.json({
       emails: validEmails,

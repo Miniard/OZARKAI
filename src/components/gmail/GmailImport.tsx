@@ -47,6 +47,8 @@ interface EmailWithInvoice {
   attachments: EmailAttachment[];
   isSelected: boolean;
   status: 'pending' | 'importing' | 'imported' | 'error';
+  invoiceType?: 'pdf' | 'image' | 'html';
+  hasHtmlContent?: boolean;
 }
 
 export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
@@ -59,7 +61,7 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
   const [error, setError] = useState<string | null>(null);
   const [lastSync, setLastSync] = useState<Date | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'pdf' | 'images'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'pdf' | 'images' | 'html'>('all');
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
   // Vérifier la connexion Gmail au chargement
@@ -204,33 +206,32 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
         e.id === email.id ? { ...e, status: 'importing' } : e
       ));
 
-      // Importer chaque pièce jointe
-      for (const attachment of email.attachments) {
-        try {
-          const response = await fetch('/api/gmail', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              messageId: email.id,
-              attachmentId: attachment.id,
-              filename: attachment.filename,
-              companyId,
-            }),
-          });
+      try {
+        // Utiliser /api/gmail/import qui gère TOUT (PJ + HTML)
+        const response = await fetch('/api/gmail/import', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emailId: email.id,
+            companyId,
+          }),
+        });
 
-          if (!response.ok) {
-            throw new Error('Import failed');
-          }
-          
-          setEmails(prev => prev.map(e => 
-            e.id === email.id ? { ...e, status: 'imported' } : e
-          ));
-        } catch (err) {
-          console.error('Error importing attachment:', err);
-          setEmails(prev => prev.map(e => 
-            e.id === email.id ? { ...e, status: 'error' } : e
-          ));
+        if (!response.ok) {
+          throw new Error('Import failed');
         }
+        
+        const result = await response.json();
+        console.log(`✅ Importé: ${result.importedCount} document(s)`);
+        
+        setEmails(prev => prev.map(e => 
+          e.id === email.id ? { ...e, status: 'imported' } : e
+        ));
+      } catch (err) {
+        console.error('Error importing email:', email.id, err);
+        setEmails(prev => prev.map(e => 
+          e.id === email.id ? { ...e, status: 'error' } : e
+        ));
       }
 
       importedCount++;
@@ -447,6 +448,12 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
             >
               Images
             </FilterButton>
+            <FilterButton 
+              active={filterType === 'html'} 
+              onClick={() => setFilterType('html')}
+            >
+              HTML
+            </FilterButton>
           </div>
         </div>
       </Card>
@@ -496,10 +503,19 @@ export function GmailImport({ companyId, onImportComplete }: GmailImportProps) {
           <div className="divide-y divide-slate-100">
             {emails
               .filter(email => {
+                // Filtre par recherche
                 if (searchQuery) {
                   const query = searchQuery.toLowerCase();
-                  return email.subject.toLowerCase().includes(query) || 
-                         email.from.toLowerCase().includes(query);
+                  if (!email.subject.toLowerCase().includes(query) && 
+                      !email.from.toLowerCase().includes(query)) {
+                    return false;
+                  }
+                }
+                // Filtre par type
+                if (filterType !== 'all') {
+                  if (filterType === 'pdf' && email.invoiceType !== 'pdf') return false;
+                  if (filterType === 'images' && email.invoiceType !== 'image') return false;
+                  if (filterType === 'html' && email.invoiceType !== 'html') return false;
                 }
                 return true;
               })
@@ -635,18 +651,33 @@ function EmailRow({ email, onToggle, formatFileSize, formatDate }: {
         </div>
       </div>
 
-      {/* Attachments */}
+      {/* Type de facture + Attachments */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {email.attachments.map(att => (
-          <div 
-            key={att.id}
-            className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-sm"
-          >
-            <FileText className="w-4 h-4 text-slate-400" />
-            <span className="text-slate-600 max-w-32 truncate">{att.filename}</span>
-            <span className="text-slate-400 text-xs">{formatFileSize(att.size)}</span>
-          </div>
-        ))}
+        {/* Badge du type */}
+        <span className={`px-2 py-1 rounded text-xs font-medium ${
+          email.invoiceType === 'pdf' ? 'bg-red-100 text-red-700' :
+          email.invoiceType === 'image' ? 'bg-blue-100 text-blue-700' :
+          'bg-amber-100 text-amber-700'
+        }`}>
+          {email.invoiceType === 'pdf' ? 'PDF' :
+           email.invoiceType === 'image' ? 'Image' : 'HTML'}
+        </span>
+        
+        {/* Attachments si présents */}
+        {email.attachments.length > 0 ? (
+          email.attachments.map(att => (
+            <div 
+              key={att.id}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-sm"
+            >
+              <FileText className="w-4 h-4 text-slate-400" />
+              <span className="text-slate-600 max-w-32 truncate">{att.filename}</span>
+              <span className="text-slate-400 text-xs">{formatFileSize(att.size)}</span>
+            </div>
+          ))
+        ) : (
+          <span className="text-xs text-slate-400 italic">Dans le corps de l'email</span>
+        )}
       </div>
 
       {/* Actions */}
