@@ -18,6 +18,91 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Logos des marques connues (URL publiques)
+const BRAND_LOGOS: Record<string, string> = {
+  'apple': 'https://logo.clearbit.com/apple.com',
+  'amazon': 'https://logo.clearbit.com/amazon.com',
+  'google': 'https://logo.clearbit.com/google.com',
+  'netflix': 'https://logo.clearbit.com/netflix.com',
+  'spotify': 'https://logo.clearbit.com/spotify.com',
+  'uber': 'https://logo.clearbit.com/uber.com',
+  'bolt': 'https://logo.clearbit.com/bolt.eu',
+  'lyft': 'https://logo.clearbit.com/lyft.com',
+  'deliveroo': 'https://logo.clearbit.com/deliveroo.com',
+  'uber eats': 'https://logo.clearbit.com/ubereats.com',
+  'just eat': 'https://logo.clearbit.com/justeat.com',
+  'microsoft': 'https://logo.clearbit.com/microsoft.com',
+  'adobe': 'https://logo.clearbit.com/adobe.com',
+  'dropbox': 'https://logo.clearbit.com/dropbox.com',
+  'slack': 'https://logo.clearbit.com/slack.com',
+  'zoom': 'https://logo.clearbit.com/zoom.us',
+  'notion': 'https://logo.clearbit.com/notion.so',
+  'figma': 'https://logo.clearbit.com/figma.com',
+  'canva': 'https://logo.clearbit.com/canva.com',
+  'openai': 'https://logo.clearbit.com/openai.com',
+  'replicate': 'https://logo.clearbit.com/replicate.com',
+  'vercel': 'https://logo.clearbit.com/vercel.com',
+  'netlify': 'https://logo.clearbit.com/netlify.com',
+  'aws': 'https://logo.clearbit.com/aws.amazon.com',
+  'paypal': 'https://logo.clearbit.com/paypal.com',
+  'stripe': 'https://logo.clearbit.com/stripe.com',
+  'ikea': 'https://logo.clearbit.com/ikea.com',
+  'carrefour': 'https://logo.clearbit.com/carrefour.com',
+  'leclerc': 'https://logo.clearbit.com/e-leclerc.com',
+  'lidl': 'https://logo.clearbit.com/lidl.com',
+  'aldi': 'https://logo.clearbit.com/aldi.com',
+  'orange': 'https://logo.clearbit.com/orange.com',
+  'sfr': 'https://logo.clearbit.com/sfr.fr',
+  'free': 'https://logo.clearbit.com/free.fr',
+  'bouygues': 'https://logo.clearbit.com/bouyguestelecom.fr',
+  'sncf': 'https://logo.clearbit.com/sncf.com',
+  'air france': 'https://logo.clearbit.com/airfrance.com',
+  'easyjet': 'https://logo.clearbit.com/easyjet.com',
+  'ryanair': 'https://logo.clearbit.com/ryanair.com',
+  'booking': 'https://logo.clearbit.com/booking.com',
+  'airbnb': 'https://logo.clearbit.com/airbnb.com',
+  'supercell': 'https://logo.clearbit.com/supercell.com',
+  'clash royale': 'https://logo.clearbit.com/supercell.com',
+  'app store': 'https://logo.clearbit.com/apple.com',
+  'google play': 'https://logo.clearbit.com/play.google.com',
+  'steam': 'https://logo.clearbit.com/steampowered.com',
+  'playstation': 'https://logo.clearbit.com/playstation.com',
+  'xbox': 'https://logo.clearbit.com/xbox.com',
+  'nintendo': 'https://logo.clearbit.com/nintendo.com',
+  'epic games': 'https://logo.clearbit.com/epicgames.com',
+  'discord': 'https://logo.clearbit.com/discord.com',
+  'twitch': 'https://logo.clearbit.com/twitch.tv',
+  'youtube': 'https://logo.clearbit.com/youtube.com',
+  'tiktok': 'https://logo.clearbit.com/tiktok.com',
+  'instagram': 'https://logo.clearbit.com/instagram.com',
+  'facebook': 'https://logo.clearbit.com/facebook.com',
+  'meta': 'https://logo.clearbit.com/meta.com',
+};
+
+// Trouver le logo d'une marque
+function findBrandLogo(vendorName: string): string | null {
+  if (!vendorName) return null;
+  const lowerName = vendorName.toLowerCase();
+  
+  // Chercher une correspondance exacte ou partielle
+  for (const [brand, logo] of Object.entries(BRAND_LOGOS)) {
+    if (lowerName.includes(brand) || brand.includes(lowerName)) {
+      return logo;
+    }
+  }
+  
+  // Essayer avec le domaine via Clearbit
+  const words = vendorName.split(/\s+/);
+  if (words.length > 0) {
+    const mainWord = words[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (mainWord.length > 2) {
+      return `https://logo.clearbit.com/${mainWord}.com`;
+    }
+  }
+  
+  return null;
+}
+
 export interface LineItem {
   description: string;
   quantity: number;
@@ -54,67 +139,86 @@ export interface AnalysisResult {
   error?: string;
 }
 
-const ANALYSIS_PROMPT = `Tu es un expert en analyse de documents comptables.
+const ANALYSIS_PROMPT = `Tu es un expert en analyse de documents comptables français et internationaux.
 Analyse ce document et extrais TOUTES les informations au format JSON strict.
 Réponds UNIQUEMENT avec le JSON, sans markdown ni explication.
 
 {
-  "type": "FACTURE_ACHAT" | "FACTURE_VENTE" | "DEVIS" | "NOTE_FRAIS" | "RECU" | "AUTRE",
-  "numero": "numéro de facture/reçu ou null",
+  "type": "FACTURE_ACHAT" | "RECU" | "FACTURE_VENTE" | "DEVIS" | "NOTE_FRAIS" | "AVOIR" | "ABONNEMENT" | "AUTRE",
+  "numero": "numéro de facture/reçu/commande ou null",
   "date": "YYYY-MM-DD ou null",
   "dueDate": "YYYY-MM-DD (date d'échéance) ou null",
   
-  "fournisseur": "nom de l'entreprise qui ÉMET la facture (celle qui vend/facture)",
-  "fournisseurAdresse": "adresse complète du fournisseur ou null",
-  "fournisseurEmail": "email du fournisseur ou null",
-  "fournisseurTelephone": "téléphone du fournisseur ou null",
-  "fournisseurTVA": "numéro TVA intracommunautaire ou SIRET ou null",
+  "fournisseur": "nom EXACT de l'entreprise/marque (ex: Apple, Amazon, Uber, Netflix...)",
+  "fournisseurAdresse": "adresse complète ou null",
+  "fournisseurEmail": "email ou null", 
+  "fournisseurTelephone": "téléphone ou null",
+  "fournisseurTVA": "numéro TVA/SIRET/identifiant fiscal ou null",
+  "fournisseurSiteWeb": "site web ou null",
   
-  "client": "nom du client qui REÇOIT la facture (celui qui doit payer) ou null",
+  "client": "nom du client destinataire ou null",
+  "clientEmail": "email du client ou null",
   
   "montantHT": nombre ou null,
-  "tva": nombre (montant TVA total) ou null,
-  "tauxTVA": nombre (pourcentage principal) ou null,
-  "montantTTC": nombre ou null,
-  "devise": "EUR" | "USD" | "GBP" etc,
+  "tva": nombre (montant TVA) ou null,
+  "tauxTVA": nombre (%) ou null,
+  "montantTTC": nombre TOTAL ou null,
+  "devise": "EUR" | "USD" | "GBP" | autre,
   
-  "paymentMethod": "CB" | "ESPECES" | "CHEQUE" | "VIREMENT" | "PRELEVEMENT" | null,
-  "category": "RESTAURANT" | "TRANSPORT" | "FOURNITURES" | "SERVICES" | "ABONNEMENT" | "LOGICIEL" | "HEBERGEMENT" | "AUTRES" | null,
+  "paymentMethod": "CB" | "APPLE_PAY" | "GOOGLE_PAY" | "PAYPAL" | "VIREMENT" | "PRELEVEMENT" | "ESPECES" | "CHEQUE" | null,
+  "paymentStatus": "PAYE" | "EN_ATTENTE" | "ECHOUE" | null,
   
-  "description": "description courte du contenu",
-  "notes": "informations supplémentaires remarquées ou null",
-  "confiance": nombre entre 0 et 1 (niveau de confiance de l'analyse),
+  "category": "LOGICIEL" | "JEUX_VIDEO" | "STREAMING" | "ABONNEMENT" | "TRANSPORT" | "RESTAURANT" | "COURSES" | "FOURNITURES" | "TELECOM" | "HEBERGEMENT" | "SERVICES" | "AUTRES",
+  
+  "description": "description courte et claire",
+  "notes": "informations importantes (conditions, garantie, etc.) ou null",
+  "confiance": nombre 0-1,
   
   "lineItems": [
     {
-      "description": "nom du produit ou service",
-      "quantity": nombre (quantité, 1 par défaut),
-      "unitPrice": nombre (prix unitaire HT ou TTC selon dispo) ou null,
-      "amount": nombre (montant total de la ligne),
-      "vatRate": nombre (taux TVA en %) ou null
+      "description": "nom EXACT du produit/service",
+      "quantity": nombre,
+      "unitPrice": nombre ou null,
+      "amount": nombre,
+      "vatRate": nombre ou null,
+      "sku": "référence produit ou null"
     }
   ]
 }
 
-RÈGLES CRITIQUES POUR LE TYPE:
-- FACTURE_ACHAT = facture que l'utilisateur REÇOIT et doit PAYER (c'est une DÉPENSE)
-  → Le fournisseur est une entreprise tierce (ex: Replicate, Amazon, restaurant...)
-  → L'utilisateur est le CLIENT qui doit payer
-  
-- FACTURE_VENTE = facture que l'utilisateur ÉMET pour se faire PAYER (c'est un REVENU)
-  → L'utilisateur est le FOURNISSEUR qui facture
-  → Un client lui doit de l'argent
+=== RÈGLES DE CATÉGORISATION DU TYPE ===
 
-- 99% des factures reçues sont des FACTURE_ACHAT (dépenses)
-- Si tu vois "Montant dû", "À payer", "Invoice" → c'est FACTURE_ACHAT
-- Si tu vois un nom d'entreprise connue (Replicate, AWS, Google, etc.) comme émetteur → FACTURE_ACHAT
+RECU (Ticket de caisse, confirmation d'achat ponctuel):
+- App Store, Google Play (achat in-app, jeux)
+- Uber, Bolt, Lyft (course)
+- Amazon (achat unique)
+- Restaurant, café
+- Mots-clés: "reçu", "receipt", "confirmation d'achat", "your purchase"
 
-AUTRES RÈGLES:
-1. Extrais TOUTES les lignes de produits/services - OBLIGATOIRE
-2. Chaque article = une ligne séparée dans lineItems
-3. Les montants DOIVENT être des nombres (pas de symboles €/$)
-4. NE LAISSE JAMAIS lineItems VIDE
-5. Catégorie LOGICIEL/SERVICES pour les outils SaaS (Replicate, AWS, etc.)`;
+FACTURE_ACHAT (Facture formelle avec numéro):
+- Facture avec TVA détaillée
+- Numéro de facture explicite
+- Document fiscal officiel
+- Mots-clés: "facture n°", "invoice #", "TVA", "N° TVA"
+
+ABONNEMENT (Paiement récurrent):
+- Netflix, Spotify, Apple Music
+- AWS, Google Cloud, Replicate
+- Téléphone, Internet
+- Mots-clés: "abonnement", "subscription", "mensuel", "renouvellement"
+
+AVOIR (Remboursement, crédit):
+- Montant négatif ou "crédit"
+- Mots-clés: "avoir", "credit note", "remboursement"
+
+=== RÈGLES D'EXTRACTION ===
+
+1. FOURNISSEUR: Extrais le nom de MARQUE (Apple, pas "App Store Receipt")
+2. LINE ITEMS: CHAQUE produit/service = UNE ligne séparée, avec son prix exact
+3. Pour les achats in-app (jeux), extrais le nom du jeu ET l'item acheté
+4. MONTANTS: Nombres uniquement, PAS de symboles (€/$)
+5. Si le document est en anglais, traduis description et notes en français
+6. CATEGORY: Utilise JEUX_VIDEO pour les achats de jeux/in-app gaming`;
 
 /**
  * Extrait le texte d'un PDF avec unpdf
@@ -343,19 +447,48 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
       if (document.fileUrl.startsWith('data:')) {
         console.log('📁 [ANALYZE] HTML en base64...');
         const base64Data = document.fileUrl.split(',')[1];
-        const htmlContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+        let htmlContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+        
+        // Corriger les problèmes d'encodage courants (UTF-8 mal décodé)
+        htmlContent = htmlContent
+          .replace(/Ã©/g, 'é')
+          .replace(/Ã¨/g, 'è')
+          .replace(/Ãª/g, 'ê')
+          .replace(/Ã /g, 'à')
+          .replace(/Ã¢/g, 'â')
+          .replace(/Ã´/g, 'ô')
+          .replace(/Ã¹/g, 'ù')
+          .replace(/Ã»/g, 'û')
+          .replace(/Ã®/g, 'î')
+          .replace(/Ã¯/g, 'ï')
+          .replace(/Ã§/g, 'ç')
+          .replace(/Å"/g, 'œ')
+          .replace(/â‚¬/g, '€')
+          .replace(/â€™/g, "'")
+          .replace(/â€œ/g, '"')
+          .replace(/â€/g, '"')
+          .replace(/Â /g, ' ')  // Non-breaking space mal encodé
+          .replace(/Â€/g, '€')
+          .replace(/Â£/g, '£')
+          .replace(/Â¥/g, '¥')
+          .replace(/Â/g, '')    // Enlever les Â parasites
+          .replace(/\u00A0/g, ' '); // Non-breaking space Unicode
         
         // Extraire le texte du HTML (enlever les balises)
         htmlText = htmlContent
           .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '') // Enlever les styles
           .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '') // Enlever les scripts
+          .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '') // Enlever le head
           .replace(/<[^>]+>/g, ' ') // Enlever les balises
           .replace(/&nbsp;/g, ' ')
           .replace(/&amp;/g, '&')
           .replace(/&lt;/g, '<')
           .replace(/&gt;/g, '>')
           .replace(/&quot;/g, '"')
-          .replace(/&#\d+;/g, '')
+          .replace(/&apos;/g, "'")
+          .replace(/&euro;/g, '€')
+          .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(parseInt(code))) // Decode HTML entities
+          .replace(/&#x([0-9a-f]+);/gi, (_, code) => String.fromCharCode(parseInt(code, 16)))
           .replace(/\s+/g, ' ') // Normaliser les espaces
           .trim();
       } else {
@@ -416,6 +549,10 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
     console.log('📂 [ANALYZE] Type:', analysisResult.type);
     console.log('🏷️ [ANALYZE] Catégorie:', analysisResult.category);
 
+    // Trouver le logo du fournisseur
+    const vendorLogo = findBrandLogo(analysisResult.fournisseur);
+    console.log('🏷️ [ANALYZE] Logo trouvé:', vendorLogo ? 'Oui' : 'Non');
+
     // Mettre à jour le document avec les données analysées
     console.log('💾 [ANALYZE] Sauvegarde en base de données...');
     await prisma.document.update({
@@ -429,14 +566,18 @@ export async function analyzeDocument(documentId: string): Promise<AnalysisResul
         supplier: analysisResult.fournisseur || analysisResult.client || null,
         analysisData: {
           ...analysisResult,
+          vendorLogo,
           supplierAddress: analysisResult.fournisseurAdresse || null,
           supplierEmail: analysisResult.fournisseurEmail || null,
           supplierPhone: analysisResult.fournisseurTelephone || null,
           supplierVatNumber: analysisResult.fournisseurTVA || null,
+          supplierWebsite: analysisResult.fournisseurSiteWeb || null,
+          clientEmail: analysisResult.clientEmail || null,
           invoiceNumber: analysisResult.numero || null,
           currency: analysisResult.devise || 'EUR',
           lineItems: analysisResult.lineItems || [],
           paymentMethod: analysisResult.paymentMethod || null,
+          paymentStatus: analysisResult.paymentStatus || null,
           dueDate: analysisResult.dueDate || null,
           category: analysisResult.category || null,
           notes: analysisResult.notes || null,

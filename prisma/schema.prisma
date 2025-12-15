@@ -165,6 +165,9 @@ enum DocumentType {
   RECU
   NOTE_FRAIS
   RELEVE_BANCAIRE
+  DEVIS
+  AVOIR
+  ABONNEMENT
   AUTRE
 }
 

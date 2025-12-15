@@ -218,15 +218,36 @@ export function DocumentsTable({
           </thead>
           <tbody className="divide-y divide-slate-100">
             {sortedDocs.map((doc) => {
-              const isInvoice = doc.docType === 'FACTURE_ACHAT' || doc.docType === 'FACTURE_VENTE';
-              const isPaid = doc.analyzed && doc.amount && doc.amount > 0;
+              // Type de document amélioré
+              const docType = doc.docType || doc.analysisData?.type || 'AUTRE';
+              const isInvoice = docType === 'FACTURE_ACHAT' || docType === 'FACTURE_VENTE';
+              const isReceipt = docType === 'RECU';
+              const isSubscription = docType === 'ABONNEMENT';
+              const isRefund = docType === 'AVOIR';
+              
+              // Label et couleur du type
+              const getTypeInfo = () => {
+                switch (docType) {
+                  case 'FACTURE_ACHAT': return { label: 'Facture', color: 'text-blue-600 bg-blue-50' };
+                  case 'FACTURE_VENTE': return { label: 'Facture (vente)', color: 'text-green-600 bg-green-50' };
+                  case 'RECU': return { label: 'Reçu', color: 'text-amber-600 bg-amber-50' };
+                  case 'ABONNEMENT': return { label: 'Abonnement', color: 'text-purple-600 bg-purple-50' };
+                  case 'AVOIR': return { label: 'Avoir', color: 'text-red-600 bg-red-50' };
+                  case 'NOTE_FRAIS': return { label: 'Note de frais', color: 'text-cyan-600 bg-cyan-50' };
+                  case 'DEVIS': return { label: 'Devis', color: 'text-slate-600 bg-slate-100' };
+                  default: return { label: 'Document', color: 'text-slate-600 bg-slate-100' };
+                }
+              };
+              const typeInfo = getTypeInfo();
+              
+              const isPaid = doc.analysisData?.paymentStatus === 'PAYE' || (doc.analyzed && doc.amount && doc.amount > 0);
               const invoiceNumber = doc.analysisData?.invoiceNumber || doc.analysisData?.numero || '-';
               const vendorName = doc.supplier || doc.analysisData?.fournisseur || 'Unknown';
               const vendorDesc = doc.analysisData?.description || doc.filename;
               const vendorColor = getVendorColor(vendorName);
               const sourceEmail = doc.analysisData?.sourceEmail || doc.source || 'Upload manuel';
-              const billedTo = doc.analysisData?.billedTo || 'N/A';
-              const hasLinked = Math.random() > 0.7; // Simulé
+              const billedTo = doc.analysisData?.client || doc.analysisData?.clientEmail || 'N/A';
+              const hasLinked = false;
 
               return (
                 <tr 
@@ -245,12 +266,17 @@ export function DocumentsTable({
                     />
                   </td>
                   
-                  {/* Type with icons */}
+                  {/* Type avec badge */}
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-1.5">
-                      <RefreshCw className="w-4 h-4 text-slate-300" />
-                      <FileText className="w-4 h-4 text-amber-400" />
-                      <span className="text-sm text-slate-700">{isInvoice ? 'Invoice' : 'Receipt'}</span>
+                      {isSubscription && <RefreshCw className="w-4 h-4 text-purple-400" />}
+                      {isReceipt && <Receipt className="w-4 h-4 text-amber-400" />}
+                      {isInvoice && <FileText className="w-4 h-4 text-blue-400" />}
+                      {isRefund && <RefreshCw className="w-4 h-4 text-red-400" />}
+                      {!isSubscription && !isReceipt && !isInvoice && !isRefund && <FileText className="w-4 h-4 text-slate-400" />}
+                      <span className={`text-sm px-2 py-0.5 rounded-full ${typeInfo.color}`}>
+                        {typeInfo.label}
+                      </span>
                       {hasLinked && (
                         <div className="flex items-center gap-0.5 text-xs text-primary-600">
                           <Link2 className="w-3 h-3" />
@@ -298,10 +324,23 @@ export function DocumentsTable({
                     <span className="text-sm text-slate-700">{formatDate(doc.date)}</span>
                   </td>
                   
-                  {/* Vendor */}
+                  {/* Vendor avec Logo */}
                   <td className="px-3 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className={`w-8 h-8 rounded-lg ${vendorColor.bg} flex items-center justify-center flex-shrink-0`}>
+                      {doc.analysisData?.vendorLogo ? (
+                        <img 
+                          src={doc.analysisData.vendorLogo} 
+                          alt={vendorName}
+                          className="w-8 h-8 rounded-lg object-contain bg-white border border-slate-200 flex-shrink-0"
+                          onError={(e) => {
+                            // Fallback to letter avatar on error
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.nextElementSibling?.classList.remove('hidden');
+                          }}
+                        />
+                      ) : null}
+                      <div className={`w-8 h-8 rounded-lg ${vendorColor.bg} flex items-center justify-center flex-shrink-0 ${doc.analysisData?.vendorLogo ? 'hidden' : ''}`}>
                         <span className={`${vendorColor.text} text-xs font-bold`}>
                           {vendorName.charAt(0).toUpperCase()}
                         </span>

@@ -28,7 +28,10 @@ import {
   CreditCard,
   HelpCircle,
   Download,
-  ChevronDown
+  ChevronDown,
+  Trash2,
+  X,
+  CheckSquare
 } from 'lucide-react';
 
 // Types pour les filtres
@@ -54,6 +57,8 @@ export default function DashboardPage() {
   const [loadingState, setLoadingState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Export functions
   const handleExport = async (format: 'csv' | 'json') => {
@@ -74,6 +79,61 @@ export default function DashboardPage() {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export error:', error);
+      alert('Erreur lors de l\'export');
+    } finally {
+      setIsExporting(false);
+      setShowExportMenu(false);
+    }
+  };
+
+  // Bulk Delete
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Supprimer ${selectedIds.size} document(s) sélectionné(s) ?`)) return;
+    
+    setIsDeleting(true);
+    try {
+      const deletePromises = Array.from(selectedIds).map(id =>
+        fetch(`/api/documents/${id}`, { method: 'DELETE' })
+      );
+      await Promise.all(deletePromises);
+      setSelectedIds(new Set());
+      fetchDocuments();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      alert('Erreur lors de la suppression');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Bulk Export
+  const handleBulkExport = async (format: 'csv' | 'json') => {
+    if (selectedIds.size === 0) return;
+    setIsExporting(true);
+    try {
+      const response = await fetch('/api/documents/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          documentIds: Array.from(selectedIds),
+          format,
+        }),
+      });
+      
+      if (!response.ok) throw new Error('Erreur export');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = window.document.createElement('a');
+      a.href = url;
+      a.download = `factures-selection.${format}`;
+      window.document.body.appendChild(a);
+      a.click();
+      window.document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Bulk export error:', error);
       alert('Erreur lors de l\'export');
     } finally {
       setIsExporting(false);
@@ -450,23 +510,92 @@ export default function DashboardPage() {
                     </div>
                   </div>
                 ) : (
-                  /* Vue Tableau */
-                  <DocumentsTable
-                    documents={documents.filter(doc => {
-                      const matchesSearch = (doc.filename + (doc.supplier || '')).toLowerCase().includes(searchTerm.toLowerCase());
-                      let matchesFilter = true;
-                      if (activeFilter === 'to_export') matchesFilter = !doc.exported;
-                      if (activeFilter === 'exported') matchesFilter = doc.exported === true;
-                      if (activeFilter === 'to_review') matchesFilter = !doc.analyzed;
-                      if (activeFilter === 'recent') {
-                        const date = new Date(doc.createdAt);
-                        const now = new Date();
-                        matchesFilter = (now.getTime() - date.getTime()) < 7 * 24 * 60 * 60 * 1000;
-                      }
-                      return matchesSearch && matchesFilter;
-                    })}
-                    onDocumentClick={(doc) => setSelectedDocument(doc)}
-                  />
+                  <>
+                    {/* Bulk Actions Toolbar */}
+                    {selectedIds.size > 0 && (
+                      <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-4 flex items-center justify-between animate-in slide-in-from-top-2">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2 text-primary-700">
+                            <CheckSquare className="w-5 h-5" />
+                            <span className="font-medium">{selectedIds.size} document(s) sélectionné(s)</span>
+                          </div>
+                          <button
+                            onClick={() => setSelectedIds(new Set())}
+                            className="text-sm text-primary-600 hover:text-primary-800 flex items-center gap-1"
+                          >
+                            <X className="w-4 h-4" />
+                            Désélectionner
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {/* Export sélection */}
+                          <div className="relative">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={<Download className="w-4 h-4" />}
+                              onClick={() => setShowExportMenu(!showExportMenu)}
+                              disabled={isExporting}
+                            >
+                              Exporter ({selectedIds.size})
+                            </Button>
+                            {showExportMenu && (
+                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                                <button
+                                  onClick={() => handleBulkExport('csv')}
+                                  disabled={isExporting}
+                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Exporter en CSV
+                                </button>
+                                <button
+                                  onClick={() => handleBulkExport('json')}
+                                  disabled={isExporting}
+                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Exporter en JSON
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          
+                          {/* Supprimer sélection */}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            leftIcon={<Trash2 className="w-4 h-4" />}
+                            onClick={handleBulkDelete}
+                            disabled={isDeleting}
+                            className="text-red-600 border-red-200 hover:bg-red-50"
+                          >
+                            {isDeleting ? 'Suppression...' : `Supprimer (${selectedIds.size})`}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Vue Tableau */}
+                    <DocumentsTable
+                      documents={documents.filter(doc => {
+                        const matchesSearch = (doc.filename + (doc.supplier || '')).toLowerCase().includes(searchTerm.toLowerCase());
+                        let matchesFilter = true;
+                        if (activeFilter === 'to_export') matchesFilter = !doc.exported;
+                        if (activeFilter === 'exported') matchesFilter = doc.exported === true;
+                        if (activeFilter === 'to_review') matchesFilter = !doc.analyzed;
+                        if (activeFilter === 'recent') {
+                          const date = new Date(doc.createdAt);
+                          const now = new Date();
+                          matchesFilter = (now.getTime() - date.getTime()) < 7 * 24 * 60 * 60 * 1000;
+                        }
+                        return matchesSearch && matchesFilter;
+                      })}
+                      onDocumentClick={(doc) => setSelectedDocument(doc)}
+                      selectedIds={selectedIds}
+                      onSelectionChange={setSelectedIds}
+                    />
+                  </>
                 )}
               </div>
             )}
