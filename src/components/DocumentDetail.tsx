@@ -54,21 +54,54 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
   const [currentPage, setCurrentPage] = useState(1);
   const totalPages = 2; // Simulé
   
-  // Données du formulaire
+  // Cast analysisData pour accès aux propriétés
+  const analysis = document.analysisData as Record<string, any> | null;
+  
+  // Données du formulaire - TOUTES les infos de l'analyse
   const [formData, setFormData] = useState({
-    docType: document.docType || 'FACTURE_ACHAT',
-    supplier: document.supplier || '',
-    supplierVatNumber: document.analysisData?.supplierVatNumber || '',
-    invoiceNumber: document.analysisData?.invoiceNumber || document.analysisData?.numero || '',
-    receiptNumber: '',
-    transactionId: '',
-    poNumber: '',
-    quoteId: '',
-    date: document.date ? new Date(document.date).toISOString().split('T')[0] : '',
-    dueDate: document.analysisData?.dueDate || '',
-    billedTo: '',
-    account: document.analysisData?.category || '',
-    currency: document.analysisData?.currency || 'EUR',
+    // Type de document
+    docType: document.docType || analysis?.type || 'FACTURE_ACHAT',
+    
+    // Infos fournisseur
+    supplier: document.supplier || analysis?.fournisseur || '',
+    supplierAddress: analysis?.fournisseurAdresse || analysis?.supplierAddress || '',
+    supplierEmail: analysis?.fournisseurEmail || analysis?.supplierEmail || '',
+    supplierPhone: analysis?.fournisseurTelephone || analysis?.supplierPhone || '',
+    supplierVatNumber: analysis?.fournisseurTVA || analysis?.supplierVatNumber || '',
+    supplierWebsite: analysis?.fournisseurSiteWeb || analysis?.supplierWebsite || '',
+    
+    // Numéros de référence
+    invoiceNumber: analysis?.numero || analysis?.invoiceNumber || '',
+    receiptNumber: analysis?.receiptNumber || '',
+    transactionId: analysis?.transactionId || '',
+    poNumber: analysis?.poNumber || '',
+    quoteId: analysis?.quoteId || '',
+    
+    // Dates
+    date: document.date ? new Date(document.date).toISOString().split('T')[0] : (analysis?.date || ''),
+    dueDate: analysis?.dueDate || '',
+    
+    // Client
+    billedTo: analysis?.client || '',
+    billedToEmail: analysis?.clientEmail || '',
+    
+    // Comptabilité
+    account: analysis?.category || '',
+    currency: analysis?.devise || analysis?.currency || 'EUR',
+    
+    // Paiement
+    paymentMethod: analysis?.paymentMethod || '',
+    paymentStatus: analysis?.paymentStatus || '',
+    
+    // Montants
+    montantHT: analysis?.montantHT || null,
+    tva: document.vat || analysis?.tva || null,
+    tauxTVA: analysis?.tauxTVA || null,
+    montantTTC: document.amount || analysis?.montantTTC || null,
+    
+    // Notes
+    description: analysis?.description || '',
+    notes: analysis?.notes || '',
   });
 
   const [lineItems, setLineItems] = useState<LineItem[]>(
@@ -97,17 +130,50 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
       const data = await response.json();
       
       if (data.analysis) {
+        const a = data.analysis;
         setFormData(prev => ({
           ...prev,
-          docType: data.analysis.type || prev.docType,
-          supplier: data.analysis.fournisseur || prev.supplier,
-          supplierVatNumber: data.analysis.fournisseurTVA || prev.supplierVatNumber,
-          invoiceNumber: data.analysis.numero || prev.invoiceNumber,
-          date: data.analysis.date || prev.date,
-          account: data.analysis.category || prev.account,
+          // Type
+          docType: a.type || prev.docType,
+          account: a.category || prev.account,
+          
+          // Fournisseur
+          supplier: a.fournisseur || prev.supplier,
+          supplierAddress: a.fournisseurAdresse || prev.supplierAddress,
+          supplierEmail: a.fournisseurEmail || prev.supplierEmail,
+          supplierPhone: a.fournisseurTelephone || prev.supplierPhone,
+          supplierVatNumber: a.fournisseurTVA || prev.supplierVatNumber,
+          supplierWebsite: a.fournisseurSiteWeb || prev.supplierWebsite,
+          
+          // Références
+          invoiceNumber: a.numero || prev.invoiceNumber,
+          
+          // Dates
+          date: a.date || prev.date,
+          dueDate: a.dueDate || prev.dueDate,
+          
+          // Client
+          billedTo: a.client || prev.billedTo,
+          billedToEmail: a.clientEmail || prev.billedToEmail,
+          
+          // Montants
+          montantHT: a.montantHT || prev.montantHT,
+          tva: a.tva || prev.tva,
+          tauxTVA: a.tauxTVA || prev.tauxTVA,
+          montantTTC: a.montantTTC || prev.montantTTC,
+          currency: a.devise || prev.currency,
+          
+          // Paiement
+          paymentMethod: a.paymentMethod || prev.paymentMethod,
+          paymentStatus: a.paymentStatus || prev.paymentStatus,
+          
+          // Notes
+          description: a.description || prev.description,
+          notes: a.notes || prev.notes,
         }));
-        if (data.analysis.lineItems?.length) {
-          setLineItems(data.analysis.lineItems);
+        
+        if (a.lineItems?.length) {
+          setLineItems(a.lineItems);
         }
       }
       if (onAnalyzed) onAnalyzed();
@@ -205,20 +271,30 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
   ];
 
   const docTypeOptions = [
-    { value: 'FACTURE_ACHAT', label: 'Invoice' },
-    { value: 'RECU', label: 'Receipt' },
-    { value: 'NOTE_FRAIS', label: 'Expense' },
-    { value: 'DEVIS', label: 'Quote' },
-    { value: 'AUTRE', label: 'Other' },
+    { value: 'FACTURE_ACHAT', label: 'Facture (achat)' },
+    { value: 'FACTURE_VENTE', label: 'Facture (vente)' },
+    { value: 'RECU', label: 'Reçu' },
+    { value: 'ABONNEMENT', label: 'Abonnement' },
+    { value: 'AVOIR', label: 'Avoir / Remboursement' },
+    { value: 'NOTE_FRAIS', label: 'Note de frais' },
+    { value: 'DEVIS', label: 'Devis' },
+    { value: 'AUTRE', label: 'Autre' },
   ];
 
   const accountOptions = [
-    { value: '', label: 'Select account...' },
-    { value: 'SOFTWARE', label: 'Software and subscription services' },
-    { value: 'OFFICE', label: 'Office supplies' },
-    { value: 'TRAVEL', label: 'Travel expenses' },
-    { value: 'MARKETING', label: 'Marketing' },
-    { value: 'OTHER', label: 'Other expenses' },
+    { value: '', label: 'Sélectionner une catégorie...' },
+    { value: 'LOGICIEL', label: 'Logiciel / SaaS' },
+    { value: 'ABONNEMENT', label: 'Abonnement' },
+    { value: 'JEUX_VIDEO', label: 'Jeux vidéo' },
+    { value: 'STREAMING', label: 'Streaming' },
+    { value: 'TRANSPORT', label: 'Transport' },
+    { value: 'RESTAURANT', label: 'Restaurant' },
+    { value: 'COURSES', label: 'Courses' },
+    { value: 'FOURNITURES', label: 'Fournitures bureau' },
+    { value: 'TELECOM', label: 'Télécom / Internet' },
+    { value: 'HEBERGEMENT', label: 'Hébergement' },
+    { value: 'SERVICES', label: 'Services' },
+    { value: 'AUTRES', label: 'Autres' },
   ];
 
   return (
@@ -315,124 +391,310 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
           <div className="flex-1 overflow-y-auto p-6">
             {activeTab === 'basic' && (
               <div className="space-y-6">
-                <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider">General</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Source</label>
-                    <p className="text-sm text-slate-900">{document.source || 'Email'}</p>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Billed to</label>
-                    <select
-                      value={formData.billedTo}
-                      onChange={(e) => handleFieldChange('billedTo', e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                    >
-                      <option value="">Select business entity...</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Type</label>
-                    <select
-                      value={formData.docType}
-                      onChange={(e) => handleFieldChange('docType', e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                    >
-                      {docTypeOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Account</label>
-                    <select
-                      value={formData.account}
-                      onChange={(e) => handleFieldChange('account', e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                    >
-                      {accountOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Invoice #</label>
-                    <input
-                      type="text"
-                      value={formData.invoiceNumber}
-                      onChange={(e) => handleFieldChange('invoiceNumber', e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Receipt #</label>
-                    <input
-                      type="text"
-                      value={formData.receiptNumber}
-                      onChange={(e) => handleFieldChange('receiptNumber', e.target.value)}
-                      placeholder="Invoice ID"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Transaction #</label>
-                    <input
-                      type="text"
-                      value={formData.transactionId}
-                      onChange={(e) => handleFieldChange('transactionId', e.target.value)}
-                      placeholder="Transaction ID"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">PO #</label>
-                    <input
-                      type="text"
-                      value={formData.poNumber}
-                      onChange={(e) => handleFieldChange('poNumber', e.target.value)}
-                      placeholder="Purchase Order ID"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Quote #</label>
-                    <input
-                      type="text"
-                      value={formData.quoteId}
-                      onChange={(e) => handleFieldChange('quoteId', e.target.value)}
-                      placeholder="Quote ID"
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-400"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-600 mb-1">Invoice Date</label>
-                    <input
-                      type="date"
-                      value={formData.date}
-                      onChange={(e) => handleFieldChange('date', e.target.value)}
-                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                </div>
-
+                {/* SECTION: Type & Catégorie */}
                 <div>
-                  <label className="block text-sm text-slate-600 mb-1">Due Date</label>
-                  <input
-                    type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => handleFieldChange('dueDate', e.target.value)}
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
-                  />
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Type de document</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Type</label>
+                      <select
+                        value={formData.docType}
+                        onChange={(e) => handleFieldChange('docType', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      >
+                        {docTypeOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Catégorie</label>
+                      <select
+                        value={formData.account}
+                        onChange={(e) => handleFieldChange('account', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      >
+                        {accountOptions.map((opt) => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION: Fournisseur */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Fournisseur / Vendeur</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Nom</label>
+                      <input
+                        type="text"
+                        value={formData.supplier}
+                        onChange={(e) => handleFieldChange('supplier', e.target.value)}
+                        placeholder="Nom du fournisseur"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Adresse</label>
+                      <input
+                        type="text"
+                        value={formData.supplierAddress}
+                        onChange={(e) => handleFieldChange('supplierAddress', e.target.value)}
+                        placeholder="Adresse complète"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-slate-600 mb-1">Email</label>
+                        <input
+                          type="email"
+                          value={formData.supplierEmail}
+                          onChange={(e) => handleFieldChange('supplierEmail', e.target.value)}
+                          placeholder="email@example.com"
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-600 mb-1">Téléphone</label>
+                        <input
+                          type="text"
+                          value={formData.supplierPhone}
+                          onChange={(e) => handleFieldChange('supplierPhone', e.target.value)}
+                          placeholder="+33..."
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm text-slate-600 mb-1">N° TVA / SIRET</label>
+                        <input
+                          type="text"
+                          value={formData.supplierVatNumber}
+                          onChange={(e) => handleFieldChange('supplierVatNumber', e.target.value)}
+                          placeholder="FR12345678901"
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-slate-600 mb-1">Site web</label>
+                        <input
+                          type="text"
+                          value={formData.supplierWebsite}
+                          onChange={(e) => handleFieldChange('supplierWebsite', e.target.value)}
+                          placeholder="https://..."
+                          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION: Références */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Références</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">N° Facture</label>
+                      <input
+                        type="text"
+                        value={formData.invoiceNumber}
+                        onChange={(e) => handleFieldChange('invoiceNumber', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">N° Reçu</label>
+                      <input
+                        type="text"
+                        value={formData.receiptNumber}
+                        onChange={(e) => handleFieldChange('receiptNumber', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Transaction</label>
+                      <input
+                        type="text"
+                        value={formData.transactionId}
+                        onChange={(e) => handleFieldChange('transactionId', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">N° Commande</label>
+                      <input
+                        type="text"
+                        value={formData.poNumber}
+                        onChange={(e) => handleFieldChange('poNumber', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION: Dates */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Dates</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Date facture</label>
+                      <input
+                        type="date"
+                        value={formData.date}
+                        onChange={(e) => handleFieldChange('date', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Date échéance</label>
+                      <input
+                        type="date"
+                        value={formData.dueDate}
+                        onChange={(e) => handleFieldChange('dueDate', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION: Client */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Client / Destinataire</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Nom</label>
+                      <input
+                        type="text"
+                        value={formData.billedTo}
+                        onChange={(e) => handleFieldChange('billedTo', e.target.value)}
+                        placeholder="Nom du client"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Email</label>
+                      <input
+                        type="email"
+                        value={formData.billedToEmail}
+                        onChange={(e) => handleFieldChange('billedToEmail', e.target.value)}
+                        placeholder="client@email.com"
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION: Montants */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Montants</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Montant HT</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.montantHT || ''}
+                        onChange={(e) => handleFieldChange('montantHT', parseFloat(e.target.value) || null)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">TVA ({formData.tauxTVA || 20}%)</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.tva || ''}
+                        onChange={(e) => handleFieldChange('tva', parseFloat(e.target.value) || null)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Montant TTC</label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        value={formData.montantTTC || ''}
+                        onChange={(e) => handleFieldChange('montantTTC', parseFloat(e.target.value) || null)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Devise</label>
+                      <select
+                        value={formData.currency}
+                        onChange={(e) => handleFieldChange('currency', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      >
+                        <option value="EUR">EUR (€)</option>
+                        <option value="USD">USD ($)</option>
+                        <option value="GBP">GBP (£)</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION: Paiement */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Paiement</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Mode de paiement</label>
+                      <select
+                        value={formData.paymentMethod}
+                        onChange={(e) => handleFieldChange('paymentMethod', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      >
+                        <option value="">Non spécifié</option>
+                        <option value="CB">Carte bancaire</option>
+                        <option value="VIREMENT">Virement</option>
+                        <option value="PRELEVEMENT">Prélèvement</option>
+                        <option value="ESPECES">Espèces</option>
+                        <option value="CHEQUE">Chèque</option>
+                        <option value="PAYPAL">PayPal</option>
+                        <option value="APPLE_PAY">Apple Pay</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-slate-600 mb-1">Statut</label>
+                      <select
+                        value={formData.paymentStatus}
+                        onChange={(e) => handleFieldChange('paymentStatus', e.target.value)}
+                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      >
+                        <option value="">Non spécifié</option>
+                        <option value="PAYE">Payé</option>
+                        <option value="EN_ATTENTE">En attente</option>
+                        <option value="ECHOUE">Échoué</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECTION: Notes */}
+                <div className="border-t pt-6">
+                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Notes</h3>
+                  <div>
+                    <label className="block text-sm text-slate-600 mb-1">Description</label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => handleFieldChange('description', e.target.value)}
+                      rows={2}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div className="mt-3">
+                    <label className="block text-sm text-slate-600 mb-1">Notes additionnelles</label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => handleFieldChange('notes', e.target.value)}
+                      rows={2}
+                      className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
                 </div>
               </div>
             )}
