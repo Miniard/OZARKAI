@@ -143,31 +143,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Préparer les données d'export avec tous les détails
-    const exportData = documents.map((doc) => ({
-      id: doc.id,
-      filename: doc.filename,
-      date: doc.date ? new Date(doc.date).toLocaleDateString('fr-FR') : '',
-      type: doc.docType || doc.analysisData?.type || 'AUTRE',
-      fournisseur: doc.supplier || doc.analysisData?.fournisseur || '',
-      fournisseurAdresse: doc.analysisData?.fournisseurAdresse || '',
-      fournisseurEmail: doc.analysisData?.fournisseurEmail || '',
-      fournisseurTelephone: doc.analysisData?.fournisseurTelephone || '',
-      fournisseurTVA: doc.analysisData?.fournisseurTVA || '',
-      client: doc.analysisData?.client || '',
-      numero: doc.analysisData?.numero || doc.analysisData?.invoiceNumber || '',
-      montantHT: doc.analysisData?.montantHT || null,
-      tva: doc.vat || doc.analysisData?.tva || null,
-      tauxTVA: doc.analysisData?.tauxTVA || null,
-      montantTTC: doc.amount || doc.analysisData?.montantTTC || null,
-      devise: doc.analysisData?.devise || 'EUR',
-      category: doc.analysisData?.category || '',
-      paymentMethod: doc.analysisData?.paymentMethod || '',
-      description: doc.analysisData?.description || '',
-      lineItems: doc.analysisData?.lineItems || [],
-      analyzed: doc.analyzed,
-      source: doc.source,
-      createdAt: doc.createdAt,
-    }));
+    const exportData = documents.map((doc) => {
+      // Cast analysisData to any pour accéder aux propriétés
+      const analysis = doc.analysisData as Record<string, any> | null;
+      
+      return {
+        id: doc.id,
+        filename: doc.filename,
+        date: doc.date ? new Date(doc.date).toLocaleDateString('fr-FR') : '',
+        type: doc.docType || analysis?.type || 'AUTRE',
+        fournisseur: doc.supplier || analysis?.fournisseur || '',
+        fournisseurAdresse: analysis?.fournisseurAdresse || '',
+        fournisseurEmail: analysis?.fournisseurEmail || '',
+        fournisseurTelephone: analysis?.fournisseurTelephone || '',
+        fournisseurTVA: analysis?.fournisseurTVA || '',
+        client: analysis?.client || '',
+        numero: analysis?.numero || analysis?.invoiceNumber || '',
+        montantHT: analysis?.montantHT || null,
+        tva: doc.vat || analysis?.tva || null,
+        tauxTVA: analysis?.tauxTVA || null,
+        montantTTC: doc.amount || analysis?.montantTTC || null,
+        devise: analysis?.devise || 'EUR',
+        category: analysis?.category || '',
+        paymentMethod: analysis?.paymentMethod || '',
+        description: analysis?.description || '',
+        lineItems: analysis?.lineItems || [],
+        analyzed: doc.analyzed,
+        source: doc.source,
+        createdAt: doc.createdAt,
+      };
+    });
 
     // Format JSON
     if (format === 'json') {
