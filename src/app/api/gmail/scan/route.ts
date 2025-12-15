@@ -149,7 +149,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { companyId, startDate, endDate, maxResults = 100 } = body;
+    const { companyId, startDate, endDate, maxResults = 30 } = body; // Limité pour éviter timeout
 
     if (!companyId) {
       return NextResponse.json({ error: 'companyId manquant' }, { status: 400 });
@@ -219,111 +219,72 @@ export async function POST(request: NextRequest) {
     const searchData = await searchResponse.json();
     const messageIds = searchData.messages || [];
 
-    console.log(`📬 Found ${messageIds.length} emails with attachments`);
+    console.log(`📬 Found ${messageIds.length} potential invoice emails`);
 
-    // Récupérer les détails de chaque email
-    const emails = [];
+    // ⚡ OPTIMISATION : Fetch en parallèle avec format=metadata (plus rapide)
+    const emails: any[] = [];
+    const batchSize = 10; // Traiter par lots de 10
     
-    for (const msg of messageIds.slice(0, maxResults)) {
-      try {
-        // IMPORTANT: format=full pour avoir les pièces jointes
-        const msgResponse = await fetch(
-          `${GMAIL_API_URL}/users/me/messages/${msg.id}?format=full`,
-          {
-            headers: { Authorization: `Bearer ${tokenResult.accessToken}` },
-          }
-        );
-
-        if (!msgResponse.ok) continue;
-
-        const msgData = await msgResponse.json();
+    for (let i = 0; i < Math.min(messageIds.length, maxResults); i += batchSize) {
+      const batch = messageIds.slice(i, i + batchSize);
+      
+      // Fetch en parallèle
+      const batchResults = await Promise.all(
+        batch.map(async (msg: any) => {
+          try {
+            // Format=metadata est BEAUCOUP plus rapide
+            const msgResponse = await fetch(
+              `${GMAIL_API_URL}/users/me/messages/${msg.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=Date`,
+              { headers: { Authorization: `Bearer ${tokenResult.accessToken}` } }
+            );
+            if (!msgResponse.ok) return null;
+            return await msgResponse.json();
+          } catch { return null; }
+        })
+      );
+      
+      // Traiter les résultats du batch
+      for (const msgData of batchResults) {
+        if (!msgData) continue;
         
-        // Extraire les headers
         const headers = msgData.payload?.headers || [];
         const subject = headers.find((h: any) => h.name.toLowerCase() === 'subject')?.value || 'Sans objet';
         const from = headers.find((h: any) => h.name.toLowerCase() === 'from')?.value || 'Inconnu';
         const dateStr = headers.find((h: any) => h.name.toLowerCase() === 'date')?.value;
+        const snippet = msgData.snippet || '';
         
         let date = new Date();
-        if (dateStr) {
-          try {
-            date = new Date(dateStr);
-          } catch {}
-        }
-
-        // Chercher les pièces jointes récursivement dans toute la structure MIME
-        const parts = msgData.payload?.parts || [];
-        const attachments = findAttachments(parts);
+        if (dateStr) { try { date = new Date(dateStr); } catch {} }
         
-        // Aussi vérifier si l'attachement est directement sur le payload (email simple)
-        if (msgData.payload?.filename && msgData.payload?.body?.attachmentId) {
-          const ext = msgData.payload.filename.toLowerCase().split('.').pop();
-          if (['pdf', 'jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext || '')) {
-            attachments.push({
-              id: msgData.payload.body.attachmentId,
-              filename: msgData.payload.filename,
-              mimeType: msgData.payload.mimeType,
-              size: msgData.payload.body.size || 0,
-            });
-          }
-        }
-
-        // 🔍 DÉTECTION INTELLIGENTE DE FACTURE
-        // Une facture a : terme facture OU (terme billing + montant) OU (montant dans subject)
-        const snippet = msgData.snippet || '';
-        const bodyText = extractBodyText(parts);
-        const subjectLower = subject.toLowerCase();
-        const allText = `${subject} ${snippet} ${bodyText}`;
+        // 🔍 FILTRE RAPIDE sur sujet + snippet (sans fetch le body complet)
+        const textToCheck = `${subject} ${snippet}`;
         
-        // Critères de détection
         const hasInvoiceTermInSubject = hasInvoiceTerm(subject);
-        const hasInvoiceTermInBody = hasInvoiceTerm(allText);
         const hasBillingTermInSubject = hasBillingTerm(subject);
-        const hasBillingTermInBody = hasBillingTerm(allText);
-        const hasPriceInSubject = containsPrice(subject);
-        const hasPriceInBody = containsPrice(allText);
-        const hasAmountTermInBody = hasAmountTerm(allText);
-        const hasInvoiceFile = attachments.some(a => isInvoiceFilename(a.filename));
+        const hasPriceInText = containsPrice(textToCheck);
+        const hasAmountTermInText = hasAmountTerm(textToCheck);
+        const excluded = isExcluded(textToCheck);
         
-        // Exclure newsletters/promos
-        const excluded = isExcluded(allText);
-        
-        // LOGIQUE DE DÉTECTION :
-        // ✅ FACTURE si :
-        //    - Terme "facture/invoice/reçu" dans sujet OU
-        //    - Nom de fichier = facture/invoice OU
-        //    - (Terme billing + prix) dans le même email OU
-        //    - Prix dans le sujet + terme montant dans body
+        // Logique simplifiée pour la vitesse
         const isInvoice = !excluded && (
           hasInvoiceTermInSubject ||
-          hasInvoiceFile ||
-          (hasInvoiceTermInBody && hasPriceInBody) ||
-          (hasBillingTermInSubject && hasPriceInBody) ||
-          (hasPriceInSubject && hasAmountTermInBody) ||
-          (hasBillingTermInBody && hasPriceInBody && hasAmountTermInBody)
+          (hasBillingTermInSubject && hasPriceInText) ||
+          (hasPriceInText && hasAmountTermInText)
         );
         
-        // Type de facture
-        const invoiceType = attachments.length > 0 ? 'attachment' : 'html';
-        const hasHtmlContent = parts.some((p: any) => p.mimeType === 'text/html');
-        
-        console.log(`📧 "${subject.substring(0, 50)}..." - ${isInvoice ? '✅ FACTURE' : '❌'} (inv:${hasInvoiceTermInSubject}, bill:${hasBillingTermInSubject}, price:${hasPriceInSubject}, file:${hasInvoiceFile})`);
-
-        // Garder toutes les factures (avec ou sans PJ)
         if (isInvoice) {
           emails.push({
-            id: msg.id,
+            id: msgData.id,
             subject,
             from,
             date: date.toISOString(),
-            attachmentCount: attachments.length,
-            attachments,
-            invoiceType,
-            hasHtmlContent,
+            snippet: snippet.substring(0, 100),
+            // On fetche les attachments seulement à l'import, pas au scan
+            attachmentCount: 0,
+            attachments: [],
+            invoiceType: 'unknown', // Déterminé à l'import
           });
         }
-      } catch (e) {
-        console.error('Error fetching email details:', e);
       }
     }
 
