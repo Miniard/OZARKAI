@@ -511,33 +511,33 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Bulk Actions Toolbar */}
+                    {/* Bulk Actions Toolbar - Toujours visible quand sélection */}
                     {selectedIds.size > 0 && (
-                      <div className="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-4 flex items-center justify-between animate-in slide-in-from-top-2">
-                        <div className="flex items-center gap-3">
+                      <div className="bg-primary-50 border-2 border-primary-300 rounded-xl p-4 mb-4 flex items-center justify-between shadow-sm">
+                        <div className="flex items-center gap-4">
                           <div className="flex items-center gap-2 text-primary-700">
-                            <CheckSquare className="w-5 h-5" />
-                            <span className="font-medium">{selectedIds.size} document(s) sélectionné(s)</span>
+                            <CheckSquare className="w-6 h-6" />
+                            <span className="font-semibold text-lg">{selectedIds.size} sélectionné(s)</span>
                           </div>
                           <button
                             onClick={() => setSelectedIds(new Set())}
-                            className="text-sm text-primary-600 hover:text-primary-800 flex items-center gap-1"
+                            className="px-3 py-1 text-sm text-primary-600 hover:text-primary-800 hover:bg-primary-100 rounded-lg flex items-center gap-1 transition-colors"
                           >
                             <X className="w-4 h-4" />
-                            Désélectionner
+                            Tout désélectionner
                           </button>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                           {/* Export sélection */}
                           <div className="relative">
                             <Button
                               variant="outline"
-                              size="sm"
                               leftIcon={<Download className="w-4 h-4" />}
                               onClick={() => setShowExportMenu(!showExportMenu)}
                               disabled={isExporting}
+                              className="bg-white"
                             >
-                              Exporter ({selectedIds.size})
+                              {isExporting ? 'Export...' : 'Exporter'}
                             </Button>
                             {showExportMenu && (
                               <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
@@ -564,13 +564,12 @@ export default function DashboardPage() {
                           {/* Supprimer sélection */}
                           <Button
                             variant="outline"
-                            size="sm"
                             leftIcon={<Trash2 className="w-4 h-4" />}
                             onClick={handleBulkDelete}
                             disabled={isDeleting}
-                            className="text-red-600 border-red-200 hover:bg-red-50"
+                            className="bg-red-50 text-red-600 border-red-300 hover:bg-red-100"
                           >
-                            {isDeleting ? 'Suppression...' : `Supprimer (${selectedIds.size})`}
+                            {isDeleting ? 'Suppression...' : 'Supprimer'}
                           </Button>
                         </div>
                       </div>

@@ -154,17 +154,45 @@ export function DocumentsTable({
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+      {/* Barre d'actions en haut du tableau */}
+      <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <input
+            type="checkbox"
+            checked={selectedIds.size === documents.length && documents.length > 0}
+            onChange={toggleSelectAll}
+            className="w-5 h-5 rounded border-slate-300 text-primary-600 cursor-pointer"
+          />
+          <span className="text-sm text-slate-600">
+            {selectedIds.size > 0 
+              ? `${selectedIds.size} sélectionné(s)` 
+              : `${documents.length} document(s)`}
+          </span>
+        </div>
+        
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onSelectionChange?.(new Set())}
+              className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+            >
+              Désélectionner
+            </button>
+          </div>
+        )}
+      </div>
+
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-slate-200">
               {/* Checkbox */}
-              <th className="w-10 px-4 py-3 bg-white">
+              <th className="w-12 px-4 py-3 bg-white">
                 <input
                   type="checkbox"
                   checked={selectedIds.size === documents.length && documents.length > 0}
                   onChange={toggleSelectAll}
-                  className="w-4 h-4 rounded border-slate-300 text-primary-600"
+                  className="w-5 h-5 rounded border-slate-300 text-primary-600 cursor-pointer"
                 />
               </th>
               {/* Type */}
@@ -252,7 +280,11 @@ export function DocumentsTable({
               return (
                 <tr 
                   key={doc.id} 
-                  className="hover:bg-slate-50 cursor-pointer transition-colors"
+                  className={`cursor-pointer transition-colors ${
+                    selectedIds.has(doc.id) 
+                      ? 'bg-primary-50 hover:bg-primary-100' 
+                      : 'hover:bg-slate-50'
+                  }`}
                   onClick={() => onDocumentClick(doc)}
                 >
                   {/* Checkbox */}
@@ -262,7 +294,7 @@ export function DocumentsTable({
                       checked={selectedIds.has(doc.id)}
                       onChange={(e) => toggleSelect(doc.id, e as any)}
                       onClick={(e) => e.stopPropagation()}
-                      className="w-4 h-4 rounded border-slate-300 text-primary-600"
+                      className="w-5 h-5 rounded border-slate-300 text-primary-600 cursor-pointer hover:border-primary-400 transition-colors"
                     />
                   </td>
                   
