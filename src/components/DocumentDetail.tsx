@@ -262,12 +262,12 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
     return colors[index];
   };
 
-  const vendorName = formData.supplier || 'Unknown';
+  const vendorName = formData.supplier || 'Inconnu';
   const tabs: { id: Tab; label: string; count?: number }[] = [
-    { id: 'basic', label: 'Basic' },
-    { id: 'lineItems', label: 'Line Items', count: lineItems.length },
-    { id: 'exports', label: 'Exports', count: 0 },
-    { id: 'duplicates', label: 'Duplicates', count: 0 },
+    { id: 'basic', label: 'Informations' },
+    { id: 'lineItems', label: 'Lignes', count: lineItems.length },
+    { id: 'exports', label: 'Exports' },
+    { id: 'duplicates', label: 'Doublons' },
   ];
 
   const docTypeOptions = [
@@ -298,88 +298,79 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
   ];
 
   return (
-    <div className="fixed inset-0 bg-slate-50 z-[100] flex flex-col">
+    <div className="fixed inset-0 bg-slate-100 z-[100] flex flex-col">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-4">
-          <button onClick={onClose} className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900">
+      <header className="bg-slate-900 px-6 py-3 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-6">
+          <button onClick={onClose} className="flex items-center gap-2 text-sm text-slate-300 hover:text-white transition-colors">
             <ArrowLeft className="w-4 h-4" />
-            Back to Documents
+            Retour
           </button>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <button className="hover:text-slate-700">← Previous</button>
-          <button className="hover:text-slate-700">Next →</button>
-        </div>
-      </header>
-
-      {/* Document Header */}
-      <div className="bg-white border-b border-slate-200 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-xl ${getVendorColor(vendorName)} flex items-center justify-center`}>
-              <span className="text-white text-lg font-bold">{vendorName.charAt(0).toUpperCase()}</span>
+          <div className="h-4 w-px bg-slate-700" />
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
+              <span className="text-white text-sm font-semibold">{vendorName.charAt(0).toUpperCase()}</span>
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-500">
-                  {formData.docType === 'RECU' ? 'Receipt' : 'Invoice'}
-                </span>
-                <span className="text-sm text-slate-900 font-mono">
-                  #{formData.invoiceNumber || 'N/A'}
-                </span>
-              </div>
-              <h1 className="text-lg font-semibold text-slate-900">{vendorName}</h1>
+              <p className="text-sm font-medium text-white">{vendorName}</p>
+              <p className="text-xs text-slate-400">
+                {formData.docType === 'RECU' ? 'Reçu' : 'Facture'} • {formData.invoiceNumber || 'Sans numéro'}
+              </p>
             </div>
           </div>
-
-          <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500">
-              Last updated: {document.createdAt ? new Date(document.createdAt).toLocaleDateString() : 'N/A'}
-            </span>
-            <Button variant="outline" size="sm">
-              <Download className="w-4 h-4 mr-1" /> Export
-            </Button>
-            <Button variant="outline" size="sm" onClick={handleDownload}>
-              <Download className="w-4 h-4 mr-1" /> Download
-            </Button>
-            {onDelete && (
-              <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50" onClick={onDelete}>
-                <Trash2 className="w-4 h-4 mr-1" /> Delete
-              </Button>
-            )}
-            <Button 
-              size="sm"
-              onClick={handleSave}
-              disabled={!hasChanges || isSaving}
-              className="bg-primary-500 hover:bg-primary-600"
-            >
-              {isSaving ? <Loader2 className="w-4 h-4 mr-1 animate-spin" /> : <Check className="w-4 h-4 mr-1" />}
-              Save
-            </Button>
-          </div>
         </div>
-      </div>
+
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleDownload}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+          >
+            <Download className="w-4 h-4" />
+            Télécharger
+          </button>
+          {onDelete && (
+            <button 
+              onClick={onDelete}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/30 rounded-lg transition-colors"
+            >
+              <Trash2 className="w-4 h-4" />
+              Supprimer
+            </button>
+          )}
+          <button 
+            onClick={handleSave}
+            disabled={!hasChanges || isSaving}
+            className={`flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium rounded-lg transition-colors ${
+              hasChanges 
+                ? 'bg-white text-slate-900 hover:bg-slate-100' 
+                : 'bg-slate-700 text-slate-400 cursor-not-allowed'
+            }`}
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+            Enregistrer
+          </button>
+        </div>
+      </header>
 
       {/* Main Content - Side by Side */}
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Form */}
         <div className="w-[480px] bg-white border-r border-slate-200 flex flex-col overflow-hidden">
           {/* Tabs */}
-          <div className="flex border-b border-slate-200 px-4">
+          <div className="flex border-b border-slate-200 px-4 bg-slate-50">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 py-3 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   activeTab === tab.id
-                    ? 'border-primary-500 text-primary-600'
+                    ? 'border-slate-900 text-slate-900 bg-white'
                     : 'border-transparent text-slate-500 hover:text-slate-700'
                 }`}
               >
                 {tab.label}
                 {tab.count !== undefined && tab.count > 0 && (
-                  <span className="ml-1.5 px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">
+                  <span className="ml-1.5 px-1.5 py-0.5 bg-slate-200 text-slate-600 rounded text-xs">
                     {tab.count}
                   </span>
                 )}
@@ -388,12 +379,12 @@ export function DocumentDetail({ document, onClose, onSave, onDelete, onAnalyzed
           </div>
 
           {/* Form Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-5">
             {activeTab === 'basic' && (
               <div className="space-y-6">
                 {/* SECTION: Type & Catégorie */}
                 <div>
-                  <h3 className="text-sm font-semibold text-slate-900 uppercase tracking-wider mb-4">Type de document</h3>
+                  <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Type de document</h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm text-slate-600 mb-1">Type</label>

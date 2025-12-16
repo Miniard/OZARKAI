@@ -21,17 +21,10 @@ import { Card } from '@/components/ui/Card';
 import { 
   Search, 
   FileText,
-  SlidersHorizontal,
   RefreshCw,
   Building2,
   Shield,
-  CreditCard,
-  HelpCircle,
-  Download,
-  ChevronDown,
-  Trash2,
-  X,
-  CheckSquare
+  Download
 } from 'lucide-react';
 
 // Types pour les filtres
@@ -90,7 +83,7 @@ export default function DashboardPage() {
   const handleBulkDelete = async () => {
     if (selectedIds.size === 0) return;
     if (!confirm(`Supprimer ${selectedIds.size} document(s) sélectionné(s) ?`)) return;
-    
+
     setIsDeleting(true);
     try {
       const deletePromises = Array.from(selectedIds).map(id =>
@@ -104,6 +97,23 @@ export default function DashboardPage() {
       alert('Erreur lors de la suppression');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Single Document Delete
+  const handleDeleteDocument = async (id: string) => {
+    if (!confirm('Supprimer ce document ?')) return;
+    
+    try {
+      const response = await fetch(`/api/documents/${id}`, { method: 'DELETE' });
+      if (response.ok) {
+        fetchDocuments();
+      } else {
+        alert('Erreur lors de la suppression');
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      alert('Erreur lors de la suppression');
     }
   };
 
@@ -234,25 +244,25 @@ export default function DashboardPage() {
   // Page titles
   const pageTitles: Record<string, { title: string; subtitle: string }> = {
     dashboard: { title: 'Tableau de bord', subtitle: 'Vue d\'ensemble de votre activité' },
-    upload: { title: 'Importer', subtitle: 'Glissez-déposez vos factures' },
-    connectors: { title: 'Email', subtitle: 'Connectez vos boîtes mail' },
-    extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures par plage de dates' },
-    documents: { title: 'Accounting documents', subtitle: 'All receipts and invoices (paid and unpaid) ready for reconciliation' },
-    settings: { title: 'Paramètres', subtitle: 'Gérez votre compte et vos organisations' },
-    billing: { title: 'Facturation', subtitle: 'Gérez votre abonnement' },
-    help: { title: 'Aide', subtitle: 'Obtenez de l\'aide' },
-    security: { title: 'Sécurité', subtitle: 'Gérez la sécurité de votre compte' },
+    upload: { title: 'Importer', subtitle: 'Importez vos factures et reçus' },
+    connectors: { title: 'Connexions', subtitle: 'Connectez vos comptes email' },
+    extraction: { title: 'Extraction', subtitle: 'Extrayez vos factures automatiquement' },
+    documents: { title: 'Documents', subtitle: 'Factures et reçus importés' },
+    settings: { title: 'Paramètres', subtitle: 'Configuration du compte' },
+    billing: { title: 'Facturation', subtitle: 'Abonnement et paiements' },
+    help: { title: 'Aide', subtitle: 'Support et documentation' },
+    security: { title: 'Sécurité', subtitle: 'Paramètres de sécurité' },
   };
 
   const currentPage = pageTitles[activeTab] || { title: '', subtitle: '' };
 
-  // Filter tabs config - Style Receptor AI
+  // Filter tabs
   const filterTabs: { id: DocumentFilter; label: string }[] = [
-    { id: 'all', label: 'All' },
-    { id: 'to_export', label: 'To Export' },
-    { id: 'exported', label: 'Exported' },
-    { id: 'to_review', label: 'To Review' },
-    { id: 'recent', label: 'Last Extracted' },
+    { id: 'all', label: 'Tous' },
+    { id: 'to_export', label: 'À exporter' },
+    { id: 'exported', label: 'Exportés' },
+    { id: 'to_review', label: 'À vérifier' },
+    { id: 'recent', label: 'Récents' },
   ];
 
   return (
@@ -288,26 +298,26 @@ export default function DashboardPage() {
       />
 
       {/* Main Content Area */}
-      <div className="ml-20 lg:ml-64 transition-all duration-300 bg-slate-50 min-h-screen">
+      <div className="ml-16 lg:ml-60 transition-all duration-200 bg-slate-50 min-h-screen">
         {/* Page Header */}
-        <header className="bg-white border-b border-slate-200">
-          <div className="px-6 lg:px-8 py-5">
+        <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
+          <div className="px-6 lg:px-8 py-4">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-xl font-semibold text-slate-900">{currentPage.title}</h1>
-                <p className="text-sm text-slate-500 mt-0.5">{currentPage.subtitle}</p>
+                <h1 className="text-lg font-semibold text-slate-900">{currentPage.title}</h1>
+                <p className="text-sm text-slate-500">{currentPage.subtitle}</p>
               </div>
 
               {/* Actions Header */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 {activeTab === 'dashboard' && (
-                  <Button 
-                    variant="outline"
-                    leftIcon={<RefreshCw className="w-4 h-4" />}
+                  <button 
                     onClick={() => setRefreshKey(p => p + 1)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                   >
+                    <RefreshCw className="w-4 h-4" />
                     Actualiser
-                  </Button>
+                  </button>
                 )}
               </div>
             </div>
@@ -346,58 +356,41 @@ export default function DashboardPage() {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input 
                       type="text"
-                      placeholder="Search"
+                      placeholder="Rechercher..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-40 bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-sm 
-                               focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 
+                      className="w-48 bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-1.5 text-sm 
+                               focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-slate-400 focus:bg-white
                                placeholder:text-slate-400 transition-all"
                     />
                   </div>
-
-                  <span className="text-slate-300">/</span>
-
-                  {/* Load View */}
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white">
-                    <FileText className="w-4 h-4" />
-                    Load View
-                  </button>
-
-                  {/* Filters */}
-                  <button className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white">
-                    <SlidersHorizontal className="w-4 h-4" />
-                    Filters
-                  </button>
 
                   {/* Export Dropdown */}
                   <div className="relative">
                     <button 
                       onClick={() => setShowExportMenu(!showExportMenu)}
-                      className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50 transition-colors bg-white"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 text-white rounded-lg text-sm font-medium hover:bg-slate-800 transition-colors"
                     >
                       <Download className="w-4 h-4" />
                       Exporter
-                      <ChevronDown className="w-3 h-3" />
-                  </button>
+                    </button>
 
                     {showExportMenu && (
-                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
+                      <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
                         <button
                           onClick={() => handleExport('csv')}
                           disabled={isExporting}
-                          className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                          className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                         >
-                          <FileText className="w-4 h-4" />
-                          Exporter en CSV
+                          Export CSV
                         </button>
                         <button
                           onClick={() => handleExport('json')}
                           disabled={isExporting}
-                          className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                          className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
                         >
-                          <FileText className="w-4 h-4" />
-                          Exporter en JSON
-                  </button>
+                          Export JSON
+                        </button>
                       </div>
                     )}
                   </div>
@@ -414,10 +407,7 @@ export default function DashboardPage() {
             {/* LOADING STATE */}
             {loadingState === 'loading' && (
               <div className="flex flex-col items-center justify-center min-h-[60vh]">
-                <div className="flex flex-col items-center gap-4">
-                  <div className="w-12 h-12 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
-                  <p className="text-slate-500">Chargement...</p>
-                </div>
+                <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
               </div>
             )}
 
@@ -511,70 +501,6 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <>
-                    {/* Bulk Actions Toolbar - Toujours visible quand sélection */}
-                    {selectedIds.size > 0 && (
-                      <div className="bg-primary-50 border-2 border-primary-300 rounded-xl p-4 mb-4 flex items-center justify-between shadow-sm">
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2 text-primary-700">
-                            <CheckSquare className="w-6 h-6" />
-                            <span className="font-semibold text-lg">{selectedIds.size} sélectionné(s)</span>
-                          </div>
-                          <button
-                            onClick={() => setSelectedIds(new Set())}
-                            className="px-3 py-1 text-sm text-primary-600 hover:text-primary-800 hover:bg-primary-100 rounded-lg flex items-center gap-1 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                            Tout désélectionner
-                          </button>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          {/* Export sélection */}
-                          <div className="relative">
-                            <Button
-                              variant="outline"
-                              leftIcon={<Download className="w-4 h-4" />}
-                              onClick={() => setShowExportMenu(!showExportMenu)}
-                              disabled={isExporting}
-                              className="bg-white"
-                            >
-                              {isExporting ? 'Export...' : 'Exporter'}
-                            </Button>
-                            {showExportMenu && (
-                              <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50">
-                                <button
-                                  onClick={() => handleBulkExport('csv')}
-                                  disabled={isExporting}
-                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                >
-                                  <FileText className="w-4 h-4" />
-                                  Exporter en CSV
-                                </button>
-                                <button
-                                  onClick={() => handleBulkExport('json')}
-                                  disabled={isExporting}
-                                  className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
-                                >
-                                  <FileText className="w-4 h-4" />
-                                  Exporter en JSON
-                                </button>
-                              </div>
-                            )}
-                          </div>
-                          
-                          {/* Supprimer sélection */}
-                          <Button
-                            variant="outline"
-                            leftIcon={<Trash2 className="w-4 h-4" />}
-                            onClick={handleBulkDelete}
-                            disabled={isDeleting}
-                            className="bg-red-50 text-red-600 border-red-300 hover:bg-red-100"
-                          >
-                            {isDeleting ? 'Suppression...' : 'Supprimer'}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                    
                     {/* Vue Tableau */}
                     <DocumentsTable
                       documents={documents.filter(doc => {
@@ -593,6 +519,9 @@ export default function DashboardPage() {
                       onDocumentClick={(doc) => setSelectedDocument(doc)}
                       selectedIds={selectedIds}
                       onSelectionChange={setSelectedIds}
+                      onDeleteSelected={handleBulkDelete}
+                      onExportSelected={(format) => handleBulkExport(format)}
+                      onDeleteDocument={handleDeleteDocument}
                     />
                   </>
                 )}

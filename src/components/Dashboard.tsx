@@ -15,15 +15,15 @@ import {
 import { TrendingUp, TrendingDown, Receipt, FileText, ArrowUpRight, ArrowDownRight, Info, Sparkles, Loader2 } from 'lucide-react';
 import type { DashboardData } from '@/types';
 
-// Couleurs pour les graphiques
-const COLORS = ['#6366F1', '#8B5CF6', '#EC4899', '#F43F5E', '#F97316', '#EAB308', '#22C55E', '#14B8A6'];
+// Couleurs pour les graphiques - palette neutre et pro
+const COLORS = ['#18181B', '#3F3F46', '#52525B', '#71717A', '#A1A1AA', '#D4D4D8', '#E4E4E7', '#F4F4F5'];
 const EXPENSE_COLORS = {
-  'Fournitures': '#6366F1',
-  'Services': '#8B5CF6', 
-  'Abonnements': '#EC4899',
-  'Transport': '#F97316',
-  'Restauration': '#EAB308',
-  'Autres': '#94A3B8',
+  'Fournitures': '#18181B',
+  'Services': '#3F3F46', 
+  'Abonnements': '#52525B',
+  'Transport': '#71717A',
+  'Restauration': '#A1A1AA',
+  'Autres': '#D4D4D8',
 };
 
 interface DashboardProps {
@@ -91,20 +91,20 @@ export function Dashboard({ companyId }: DashboardProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-10 h-10 border-4 border-primary-100 border-t-primary-500 rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <Card className="bg-amber-50 border-amber-200">
-        <CardContent className="py-8 text-center">
-          <FileText className="w-12 h-12 text-amber-400 mx-auto mb-4" />
-          <p className="font-medium text-amber-700">Aucune donnée à afficher</p>
-          <p className="text-sm text-amber-600 mt-2">Importez vos premières factures depuis Gmail ou Outlook pour voir vos statistiques</p>
-        </CardContent>
-      </Card>
+      <div className="bg-white border border-slate-200 rounded-xl p-12 text-center">
+        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+          <FileText className="w-6 h-6 text-slate-400" />
+        </div>
+        <p className="font-medium text-slate-900 mb-1">Aucune donnée</p>
+        <p className="text-sm text-slate-500">Importez vos premières factures pour voir vos statistiques</p>
+      </div>
     );
   }
 
@@ -133,63 +133,57 @@ export function Dashboard({ companyId }: DashboardProps) {
     <div className="space-y-6">
       {/* Alerte documents non analysés */}
       {unanalyzedCount > 0 && (
-        <Card className="bg-primary-50 border border-primary-200">
-          <CardContent className="py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white border border-primary-200 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-primary-600" />
-                </div>
-                <div>
-                  <p className="font-semibold text-slate-900">
-                    {unanalyzedCount} document{unanalyzedCount > 1 ? 's' : ''} en attente d&apos;analyse
-                  </p>
-                  <p className="text-sm text-slate-500">
-                    L&apos;IA peut extraire automatiquement les montants et informations
-                  </p>
-                </div>
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-amber-600" />
               </div>
-              <Button 
-                onClick={handleAnalyzeAll}
-                disabled={isAnalyzingAll}
-                className="bg-primary-500 hover:bg-primary-600"
-              >
-                {isAnalyzingAll ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyse...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    Tout analyser
-                  </>
-                )}
-              </Button>
+              <div>
+                <p className="font-medium text-slate-900">
+                  {unanalyzedCount} document{unanalyzedCount > 1 ? 's' : ''} en attente
+                </p>
+                <p className="text-sm text-slate-500">
+                  Extraction automatique des données disponible
+                </p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+            <button 
+              onClick={handleAnalyzeAll}
+              disabled={isAnalyzingAll}
+              className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-colors"
+            >
+              {isAnalyzingAll ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Analyse...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Analyser
+                </>
+              )}
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Solde principal */}
-      <Card className="bg-white border border-slate-200">
-        <CardContent className="py-12">
-          <div className="text-center">
-            <p className="text-sm font-medium text-slate-500 mb-4 uppercase tracking-wider">Solde actuel</p>
-            <div className={`text-5xl lg:text-6xl font-bold mb-6 ${data.balance >= 0 ? 'text-primary-500' : 'text-red-500'}`}>
-              {formatCurrency(data.balance)}
-            </div>
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border ${data.balance >= 0 ? 'border-primary-200 bg-primary-50 text-primary-700' : 'border-red-200 bg-red-50 text-red-700'}`}>
-              {data.balance >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-              <span className="text-sm font-medium">
-                {data.balance >= 0 
-                  ? 'Rentabilité positive' 
-                  : 'Attention : dépenses > revenus'}
-              </span>
-            </div>
+      <div className="bg-slate-900 rounded-xl p-8">
+        <div className="text-center">
+          <p className="text-sm text-slate-400 mb-2">Solde actuel</p>
+          <div className={`text-4xl lg:text-5xl font-semibold mb-4 ${data.balance >= 0 ? 'text-white' : 'text-red-400'}`}>
+            {formatCurrency(data.balance)}
           </div>
-        </CardContent>
-      </Card>
+          <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg ${data.balance >= 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
+            {data.balance >= 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+            <span className="text-sm font-medium">
+              {data.balance >= 0 ? 'Positif' : 'Négatif'}
+            </span>
+          </div>
+        </div>
+      </div>
 
       {/* KPI Cards - 4 colonnes */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

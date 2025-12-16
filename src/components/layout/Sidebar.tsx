@@ -1,5 +1,6 @@
 /**
- * Sidebar Navigation - Design moderne avec sélecteur d'organisation
+ * Sidebar Navigation - Design Pro 2025
+ * Style minimaliste et professionnel
  */
 
 'use client';
@@ -17,11 +18,11 @@ import {
   CreditCard,
   HelpCircle,
   Shield,
-  ChevronUp,
   ChevronDown,
   Calendar,
   Plus,
-  Check
+  Check,
+  Building2
 } from 'lucide-react';
 import { signOut } from 'next-auth/react';
 
@@ -50,7 +51,6 @@ export function Sidebar({
   const profileMenuRef = useRef<HTMLDivElement>(null);
   const orgDropdownRef = useRef<HTMLDivElement>(null);
 
-  // Fermer les menus au clic extérieur
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (profileMenuRef.current && !profileMenuRef.current.contains(event.target as Node)) {
@@ -66,17 +66,15 @@ export function Sidebar({
 
   const mainMenuItems = [
     { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
+    { id: 'documents', label: 'Documents', icon: FileText },
     { id: 'upload', label: 'Importer', icon: UploadCloud },
-    { id: 'connectors', label: 'Email', icon: Link2 },
-    { id: 'extraction', label: 'Extraction', icon: Calendar, isNew: true },
-    { id: 'documents', label: 'Mes Factures', icon: FileText },
+    { id: 'connectors', label: 'Connexions', icon: Link2 },
+    { id: 'extraction', label: 'Extraction', icon: Calendar },
   ];
 
-  const profileMenuItems = [
-    { id: 'settings', label: 'Paramètres du compte', icon: Settings },
-    { id: 'security', label: 'Sécurité', icon: Shield },
-    { id: 'billing', label: 'Facturation', icon: CreditCard },
-    { id: 'help', label: 'Aide & Support', icon: HelpCircle },
+  const bottomMenuItems = [
+    { id: 'settings', label: 'Paramètres', icon: Settings },
+    { id: 'help', label: 'Aide', icon: HelpCircle },
   ];
 
   const selectedCompany = companies.find(c => c.id === selectedCompanyId);
@@ -84,47 +82,47 @@ export function Sidebar({
   return (
     <aside 
       className={`
-        fixed left-0 top-0 h-screen bg-white border-r border-slate-200
-        transition-all duration-300 ease-out z-50 flex flex-col
-        ${collapsed ? 'w-20' : 'w-64'}
+        fixed left-0 top-0 h-screen bg-slate-950 
+        transition-all duration-200 ease-out z-50 flex flex-col
+        ${collapsed ? 'w-16' : 'w-60'}
       `}
     >
-      {/* Header Logo */}
-      <div className="h-14 flex items-center px-4 border-b border-slate-100">
+      {/* Header */}
+      <div className="h-14 flex items-center px-4 border-b border-slate-800">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-9 h-9 rounded-xl bg-primary-500 flex items-center justify-center flex-shrink-0">
-            <span className="text-white font-bold text-lg">K</span>
+          <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+            <span className="text-slate-900 font-bold text-sm">K</span>
           </div>
-          <span className={`text-xl font-bold text-slate-900 whitespace-nowrap transition-all duration-300 ${collapsed ? 'opacity-0 w-0' : 'opacity-100'}`}>
-            Komptal
-          </span>
+          {!collapsed && (
+            <span className="text-lg font-semibold text-white whitespace-nowrap">
+              Komptal
+            </span>
+          )}
         </div>
       </div>
 
       {/* Organization Selector */}
       {!collapsed && companies.length > 0 && (
-        <div className="px-3 py-3 border-b border-slate-100" ref={orgDropdownRef}>
+        <div className="px-3 py-3 border-b border-slate-800" ref={orgDropdownRef}>
           <button
             onClick={() => setShowOrgDropdown(!showOrgDropdown)}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors"
+            className="w-full flex items-center gap-3 px-2.5 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 transition-colors"
           >
-            <div className="w-8 h-8 rounded-lg bg-primary-500 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm font-bold">
-                {selectedCompany?.name?.charAt(0) || 'E'}
-              </span>
+            <div className="w-7 h-7 rounded-md bg-slate-700 flex items-center justify-center flex-shrink-0">
+              <Building2 className="w-4 h-4 text-slate-300" />
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-sm font-medium text-slate-900 truncate">
+              <p className="text-sm font-medium text-white truncate">
                 {selectedCompany?.name || 'Mon Entreprise'}
               </p>
             </div>
-            <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showOrgDropdown ? 'rotate-180' : ''}`} />
+            <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${showOrgDropdown ? 'rotate-180' : ''}`} />
           </button>
 
-          {/* Organization Dropdown */}
+          {/* Dropdown */}
           {showOrgDropdown && (
-            <div className="absolute left-3 right-3 mt-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
-              <div className="py-2 max-h-60 overflow-y-auto">
+            <div className="absolute left-3 right-3 mt-2 bg-slate-900 rounded-lg shadow-xl border border-slate-700 overflow-hidden z-50">
+              <div className="py-1 max-h-60 overflow-y-auto">
                 {companies.map((company) => (
                   <button
                     key={company.id}
@@ -132,43 +130,32 @@ export function Sidebar({
                       setSelectedCompanyId?.(company.id);
                       setShowOrgDropdown(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-800 transition-colors"
                   >
-                    <div className="w-8 h-8 rounded-lg bg-primary-100 flex items-center justify-center flex-shrink-0">
-                      <span className="text-primary-600 text-sm font-bold">
+                    <div className="w-6 h-6 rounded bg-slate-700 flex items-center justify-center flex-shrink-0">
+                      <span className="text-slate-300 text-xs font-medium">
                         {company.name?.charAt(0) || 'E'}
                       </span>
                     </div>
-                    <span className="flex-1 text-left text-sm font-medium text-slate-700 truncate">
+                    <span className="flex-1 text-left text-sm text-slate-300 truncate">
                       {company.name}
                     </span>
                     {company.id === selectedCompanyId && (
-                      <Check className="w-4 h-4 text-primary-500" />
+                      <Check className="w-4 h-4 text-emerald-400" />
                     )}
                   </button>
                 ))}
               </div>
-
-              <div className="border-t border-slate-100 py-2">
+              <div className="border-t border-slate-700 py-1">
                 <button
                   onClick={() => {
                     setActiveTab('settings');
                     setShowOrgDropdown(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-slate-600"
-                >
-                  <Settings className="w-4 h-4" />
-                  <span className="text-sm">Gérer les organisations</span>
-                </button>
-                <button
-                  onClick={() => {
-                    setActiveTab('settings');
-                    setShowOrgDropdown(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-primary-600"
+                  className="w-full flex items-center gap-3 px-3 py-2 hover:bg-slate-800 transition-colors text-slate-400"
                 >
                   <Plus className="w-4 h-4" />
-                  <span className="text-sm font-medium">Nouvelle organisation</span>
+                  <span className="text-sm">Ajouter une organisation</span>
                 </button>
               </div>
             </div>
@@ -176,20 +163,9 @@ export function Sidebar({
         </div>
       )}
 
-      {/* Collapsed org icon */}
-      {collapsed && companies.length > 0 && (
-        <div className="px-3 py-3 border-b border-slate-100 flex justify-center">
-          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
-            <span className="text-primary-600 font-bold">
-              {selectedCompany?.name?.charAt(0) || 'E'}
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Main Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
-        <div className="space-y-1">
+      <nav className="flex-1 overflow-y-auto px-2 py-4">
+        <div className="space-y-0.5">
           {mainMenuItems.map((item) => (
             <NavItem
               key={item.id}
@@ -202,36 +178,58 @@ export function Sidebar({
         </div>
       </nav>
 
-      {/* Footer User Profile */}
-      <div className="relative p-3 border-t border-slate-100" ref={profileMenuRef}>
-        {/* Menu Dropdown */}
+      {/* Bottom Navigation */}
+      <div className="px-2 py-3 border-t border-slate-800">
+        <div className="space-y-0.5">
+          {bottomMenuItems.map((item) => (
+            <NavItem
+              key={item.id}
+              item={item}
+              isActive={activeTab === item.id}
+              collapsed={collapsed}
+              onClick={() => setActiveTab(item.id)}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* User Profile */}
+      <div className="relative px-2 py-3 border-t border-slate-800" ref={profileMenuRef}>
         {showProfileMenu && !collapsed && (
-          <div className="absolute bottom-full left-3 right-3 mb-2 bg-white rounded-xl shadow-xl border border-slate-200 overflow-hidden animate-in slide-in-from-bottom-2">
-            <div className="p-3 border-b border-slate-100 bg-slate-50">
-              <p className="text-sm font-semibold text-slate-900">{userName || 'Utilisateur'}</p>
-              <p className="text-xs text-slate-500 truncate">{userEmail}</p>
+          <div className="absolute bottom-full left-2 right-2 mb-2 bg-slate-900 rounded-lg shadow-xl border border-slate-700 overflow-hidden">
+            <div className="px-3 py-2.5 border-b border-slate-700">
+              <p className="text-sm font-medium text-white">{userName || 'Utilisateur'}</p>
+              <p className="text-xs text-slate-400 truncate">{userEmail}</p>
             </div>
             
-            <div className="py-2">
-              {profileMenuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    setShowProfileMenu(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
-                >
-                  <item.icon className="w-4 h-4" />
-                  {item.label}
-                </button>
-              ))}
+            <div className="py-1">
+              <button
+                onClick={() => { setActiveTab('settings'); setShowProfileMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+              >
+                <Settings className="w-4 h-4" />
+                Paramètres
+              </button>
+              <button
+                onClick={() => { setActiveTab('security'); setShowProfileMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+              >
+                <Shield className="w-4 h-4" />
+                Sécurité
+              </button>
+              <button
+                onClick={() => { setActiveTab('billing'); setShowProfileMenu(false); }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 transition-colors"
+              >
+                <CreditCard className="w-4 h-4" />
+                Facturation
+              </button>
             </div>
 
-            <div className="border-t border-slate-100">
+            <div className="border-t border-slate-700 py-1">
               <button
                 onClick={() => signOut()}
-                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-sm text-red-400 hover:bg-slate-800 transition-colors"
               >
                 <LogOut className="w-4 h-4" />
                 Déconnexion
@@ -240,33 +238,23 @@ export function Sidebar({
           </div>
         )}
 
-        {/* Profile Button */}
         <button
           onClick={() => !collapsed && setShowProfileMenu(!showProfileMenu)}
-          className={`w-full flex items-center gap-3 ${collapsed ? 'justify-center' : ''} 
-                     rounded-xl p-2 hover:bg-slate-100 transition-all cursor-pointer group`}
+          className={`w-full flex items-center gap-2.5 ${collapsed ? 'justify-center' : ''} 
+                     rounded-lg p-2 hover:bg-slate-800 transition-colors cursor-pointer`}
         >
-          {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center flex-shrink-0 
-                         group-hover:ring-2 group-hover:ring-primary-200 transition-all">
-            <span className="text-sm font-semibold text-primary-600">
+          <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center flex-shrink-0">
+            <span className="text-sm font-medium text-slate-300">
               {(userName?.[0] || userEmail?.[0] || 'U').toUpperCase()}
             </span>
           </div>
           
           {!collapsed && (
-            <>
-              <div className="flex-1 min-w-0 text-left">
-                <p className="text-sm font-medium text-slate-900 truncate">
-                  {userName || 'Utilisateur'}
-                </p>
-                <p className="text-xs text-slate-500 truncate">
-                  {userEmail || ''}
-                </p>
-              </div>
-              
-              <ChevronUp className={`w-4 h-4 text-slate-400 transition-transform ${showProfileMenu ? 'rotate-180' : ''}`} />
-            </>
+            <div className="flex-1 min-w-0 text-left">
+              <p className="text-sm font-medium text-white truncate">
+                {userName || 'Utilisateur'}
+              </p>
+            </div>
           )}
         </button>
       </div>
@@ -274,9 +262,9 @@ export function Sidebar({
       {/* Collapse Toggle */}
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="absolute -right-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-slate-200 rounded-full 
-                   flex items-center justify-center text-slate-400 hover:text-slate-600 hover:border-slate-300 
-                   transition-all shadow-sm z-50"
+        className="absolute -right-3 top-20 w-6 h-6 bg-slate-800 border border-slate-700 rounded-full 
+                   flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700
+                   transition-all shadow-lg"
       >
         {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
       </button>
@@ -284,16 +272,12 @@ export function Sidebar({
   );
 }
 
-/* ===========================================
-   NAV ITEM COMPONENT
-   =========================================== */
-
+/* Nav Item Component */
 interface NavItemProps {
   item: {
     id: string;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
-    isNew?: boolean;
   };
   isActive: boolean;
   collapsed: boolean;
@@ -307,31 +291,20 @@ function NavItem({ item, isActive, collapsed, onClick }: NavItemProps) {
     <button
       onClick={onClick}
       className={`
-        w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 group relative
+        w-full flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150
         ${isActive 
-          ? 'bg-primary-50 text-primary-700' 
-          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+          ? 'bg-slate-800 text-white' 
+          : 'text-slate-400 hover:bg-slate-900 hover:text-white'
         }
+        ${collapsed ? 'justify-center' : ''}
       `}
       title={collapsed ? item.label : ''}
     >
-      {/* Active indicator */}
-      {isActive && (
-        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-500 rounded-r-full" />
-      )}
+      <Icon className="w-[18px] h-[18px] flex-shrink-0" />
       
-      {/* Icon */}
-      <Icon className={`w-5 h-5 flex-shrink-0 transition-colors ${isActive ? 'text-primary-600' : 'text-slate-400 group-hover:text-slate-600'}`} />
-      
-      {/* Label */}
-      <span className={`text-sm font-medium whitespace-nowrap transition-all duration-300 ${collapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'}`}>
-        {item.label}
-      </span>
-
-      {/* New badge */}
-      {item.isNew && !collapsed && (
-        <span className="ml-auto px-2 py-0.5 bg-primary-500 text-white text-[10px] font-bold rounded-full uppercase">
-          New
+      {!collapsed && (
+        <span className="text-sm font-medium">
+          {item.label}
         </span>
       )}
     </button>

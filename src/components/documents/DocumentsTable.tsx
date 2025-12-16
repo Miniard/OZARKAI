@@ -1,22 +1,22 @@
 /**
- * DocumentsTable - Vue tableau exacte style Receptor AI
- * Colonnes: Checkbox, Type, Payment Status, Source, Source Details, ID, Date, Vendor, Billed To, Amount
+ * DocumentsTable - Design Pro 2025
+ * Table minimaliste et professionnelle
  */
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   FileText, 
   Receipt, 
-  Mail, 
   ChevronDown,
   ChevronUp,
   Check,
-  X,
-  MoreVertical,
-  RefreshCw,
-  Link2
+  MoreHorizontal,
+  Trash2,
+  Download,
+  Eye,
+  ArrowUpDown
 } from 'lucide-react';
 
 interface Document {
@@ -41,16 +41,29 @@ interface DocumentsTableProps {
   onDocumentClick: (doc: Document) => void;
   selectedIds?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
+  onDeleteSelected?: () => void;
+  onExportSelected?: (format: 'csv' | 'json') => void;
+  onDeleteDocument?: (id: string) => void;
 }
 
 export function DocumentsTable({ 
   documents, 
   onDocumentClick, 
   selectedIds = new Set(),
-  onSelectionChange 
+  onSelectionChange,
+  onDeleteSelected,
+  onExportSelected,
+  onDeleteDocument
 }: DocumentsTableProps) {
   const [sortField, setSortField] = useState<string>('date');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [actionMenuId, setActionMenuId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = () => setActionMenuId(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   const handleSort = (field: string) => {
     if (sortField === field) {
@@ -82,10 +95,8 @@ export function DocumentsTable({
     onSelectionChange(newSelection);
   };
 
-  // Trier les documents
   const sortedDocs = [...documents].sort((a, b) => {
     let aVal: any, bVal: any;
-    
     switch (sortField) {
       case 'date':
         aVal = a.date ? new Date(a.date).getTime() : 0;
@@ -100,317 +111,298 @@ export function DocumentsTable({
         bVal = b.supplier || '';
         break;
       default:
-        aVal = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        bVal = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return 0;
     }
-    
-    if (sortDir === 'asc') {
-      return aVal > bVal ? 1 : -1;
+    if (typeof aVal === 'string') {
+      return sortDir === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
     }
-    return aVal < bVal ? 1 : -1;
+    return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
   });
 
   const formatDate = (date: Date | string | null) => {
     if (!date) return '-';
-    try {
-      return new Date(date).toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric'
-      });
-    } catch {
-      return '-';
-    }
+    const d = new Date(date);
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
-  const formatAmount = (amount: number | null, showSecondary = false) => {
-    if (!amount) return '-';
-    const formatted = `€${amount.toLocaleString('fr-FR', { minimumFractionDigits: 2 })}`;
-    return formatted;
+  const formatAmount = (amount: number | null) => {
+    if (amount === null || amount === undefined) return '-';
+    return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' }).format(amount);
   };
 
-  // Générer une couleur basée sur le nom du fournisseur
-  const getVendorColor = (name: string) => {
-    const colors = [
-      { bg: 'bg-cyan-500', text: 'text-white' },
-      { bg: 'bg-red-500', text: 'text-white' },
-      { bg: 'bg-primary-500', text: 'text-white' },
-      { bg: 'bg-orange-500', text: 'text-white' },
-      { bg: 'bg-purple-500', text: 'text-white' },
-      { bg: 'bg-blue-500', text: 'text-white' },
-      { bg: 'bg-amber-500', text: 'text-white' },
-      { bg: 'bg-indigo-600', text: 'text-white' },
-    ];
-    const index = name ? name.charCodeAt(0) % colors.length : 0;
-    return colors[index];
-  };
-
-  const SortIcon = ({ field }: { field: string }) => {
-    if (sortField !== field) return <ChevronDown className="w-3 h-3 text-slate-300" />;
-    return sortDir === 'asc' 
-      ? <ChevronUp className="w-3 h-3 text-slate-500" />
-      : <ChevronDown className="w-3 h-3 text-slate-500" />;
+  const getDocTypeLabel = (type: string | null) => {
+    const types: Record<string, { label: string; color: string }> = {
+      'FACTURE_ACHAT': { label: 'Facture', color: 'bg-blue-50 text-blue-700' },
+      'FACTURE_VENTE': { label: 'Facture', color: 'bg-emerald-50 text-emerald-700' },
+      'RECU': { label: 'Reçu', color: 'bg-amber-50 text-amber-700' },
+      'ABONNEMENT': { label: 'Abonnement', color: 'bg-purple-50 text-purple-700' },
+      'AVOIR': { label: 'Avoir', color: 'bg-red-50 text-red-700' },
+      'NOTE_FRAIS': { label: 'Note de frais', color: 'bg-cyan-50 text-cyan-700' },
+      'DEVIS': { label: 'Devis', color: 'bg-slate-100 text-slate-700' },
+    };
+    return types[type || ''] || { label: 'Document', color: 'bg-slate-100 text-slate-600' };
   };
 
   return (
     <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-      {/* Barre d'actions en haut du tableau */}
-      <div className="px-4 py-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <input
-            type="checkbox"
-            checked={selectedIds.size === documents.length && documents.length > 0}
-            onChange={toggleSelectAll}
-            className="w-5 h-5 rounded border-slate-300 text-primary-600 cursor-pointer"
-          />
-          <span className="text-sm text-slate-600">
-            {selectedIds.size > 0 
-              ? `${selectedIds.size} sélectionné(s)` 
-              : `${documents.length} document(s)`}
-          </span>
-        </div>
-        
-        {selectedIds.size > 0 && (
-          <div className="flex items-center gap-2">
+      {/* Action Bar */}
+      {selectedIds.size > 0 && (
+        <div className="px-4 py-3 bg-slate-900 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-white">
+              {selectedIds.size} sélectionné{selectedIds.size > 1 ? 's' : ''}
+            </span>
             <button
               onClick={() => onSelectionChange?.(new Set())}
-              className="px-3 py-1.5 text-sm text-slate-600 hover:bg-slate-200 rounded-lg transition-colors"
+              className="text-sm text-slate-400 hover:text-white transition-colors"
             >
-              Désélectionner
+              Annuler
             </button>
           </div>
-        )}
-      </div>
+          <div className="flex items-center gap-2">
+            {onExportSelected && (
+              <button
+                onClick={() => onExportSelected('csv')}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-white bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                Exporter
+              </button>
+            )}
+            {onDeleteSelected && (
+              <button
+                onClick={onDeleteSelected}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-red-400 bg-slate-800 hover:bg-red-900/50 rounded-lg transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Supprimer
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
+      {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-200">
-              {/* Checkbox */}
-              <th className="w-12 px-4 py-3 bg-white">
-                <input
-                  type="checkbox"
-                  checked={selectedIds.size === documents.length && documents.length > 0}
-                  onChange={toggleSelectAll}
-                  className="w-5 h-5 rounded border-slate-300 text-primary-600 cursor-pointer"
-                />
-              </th>
-              {/* Type */}
-              <th className="px-3 py-3 text-left bg-white">
-                <span className="text-xs font-medium text-slate-500 uppercase">Type</span>
-              </th>
-              {/* Payment Status */}
-              <th className="px-3 py-3 text-left bg-white">
-                <span className="text-xs font-medium text-slate-500 uppercase">Payment<br/>Status</span>
-              </th>
-              {/* Source */}
-              <th className="px-3 py-3 text-left bg-white">
-                <span className="text-xs font-medium text-slate-500 uppercase">Source</span>
-              </th>
-              {/* Source Details */}
-              <th className="px-3 py-3 text-left bg-white">
-                <span className="text-xs font-medium text-slate-500 uppercase">Source Details</span>
-              </th>
-              {/* ID */}
-              <th className="px-3 py-3 text-left bg-white">
-                <span className="text-xs font-medium text-slate-500 uppercase">ID</span>
-              </th>
-              {/* Date */}
-              <th className="px-3 py-3 text-left bg-white cursor-pointer" onClick={() => handleSort('date')}>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-slate-500 uppercase">Date</span>
-                  <SortIcon field="date" />
+            <tr className="border-b border-slate-100">
+              <th className="w-14 px-4 py-3">
+                <div 
+                  className="flex items-center justify-center cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleSelectAll();
+                  }}
+                >
+                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                    selectedIds.size === documents.length && documents.length > 0
+                      ? 'bg-violet-600 border-violet-600'
+                      : selectedIds.size > 0
+                        ? 'bg-violet-200 border-violet-400'
+                        : 'border-slate-300 bg-white hover:border-violet-400'
+                  }`}>
+                    {selectedIds.size === documents.length && documents.length > 0 && (
+                      <Check className="w-3.5 h-3.5 text-white" />
+                    )}
+                    {selectedIds.size > 0 && selectedIds.size < documents.length && (
+                      <div className="w-2.5 h-0.5 bg-violet-600 rounded" />
+                    )}
+                  </div>
                 </div>
               </th>
-              {/* Vendor */}
-              <th className="px-3 py-3 text-left bg-white cursor-pointer" onClick={() => handleSort('supplier')}>
-                <div className="flex items-center gap-1">
-                  <span className="text-xs font-medium text-slate-500 uppercase">Vendor</span>
-                  <SortIcon field="supplier" />
-                </div>
+              <th className="px-4 py-3 text-left">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Type</span>
               </th>
-              {/* Billed To */}
-              <th className="px-3 py-3 text-left bg-white">
-                <span className="text-xs font-medium text-slate-500 uppercase">Billed To</span>
+              <th className="px-4 py-3 text-left">
+                <button 
+                  onClick={() => handleSort('supplier')}
+                  className="flex items-center gap-1 text-xs font-medium text-slate-500 uppercase tracking-wide hover:text-slate-900"
+                >
+                  Fournisseur
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
               </th>
-              {/* Amount */}
-              <th className="px-3 py-3 text-right bg-white cursor-pointer" onClick={() => handleSort('amount')}>
-                <div className="flex items-center gap-1 justify-end">
-                  <span className="text-xs font-medium text-slate-500 uppercase">Amount</span>
-                  <SortIcon field="amount" />
-                </div>
+              <th className="px-4 py-3 text-left">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Numéro</span>
               </th>
-              {/* Actions */}
-              <th className="w-10 px-2 py-3 bg-white"></th>
+              <th className="px-4 py-3 text-left">
+                <button 
+                  onClick={() => handleSort('date')}
+                  className="flex items-center gap-1 text-xs font-medium text-slate-500 uppercase tracking-wide hover:text-slate-900"
+                >
+                  Date
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+              </th>
+              <th className="px-4 py-3 text-right">
+                <button 
+                  onClick={() => handleSort('amount')}
+                  className="flex items-center gap-1 text-xs font-medium text-slate-500 uppercase tracking-wide hover:text-slate-900 ml-auto"
+                >
+                  Montant
+                  <ArrowUpDown className="w-3 h-3" />
+                </button>
+              </th>
+              <th className="px-4 py-3 text-left">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">Statut</span>
+              </th>
+              <th className="w-12 px-4 py-3"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
             {sortedDocs.map((doc) => {
-              // Type de document amélioré
-              const docType = doc.docType || doc.analysisData?.type || 'AUTRE';
-              const isInvoice = docType === 'FACTURE_ACHAT' || docType === 'FACTURE_VENTE';
-              const isReceipt = docType === 'RECU';
-              const isSubscription = docType === 'ABONNEMENT';
-              const isRefund = docType === 'AVOIR';
-              
-              // Label et couleur du type
-              const getTypeInfo = () => {
-                switch (docType) {
-                  case 'FACTURE_ACHAT': return { label: 'Facture', color: 'text-blue-600 bg-blue-50' };
-                  case 'FACTURE_VENTE': return { label: 'Facture (vente)', color: 'text-green-600 bg-green-50' };
-                  case 'RECU': return { label: 'Reçu', color: 'text-amber-600 bg-amber-50' };
-                  case 'ABONNEMENT': return { label: 'Abonnement', color: 'text-purple-600 bg-purple-50' };
-                  case 'AVOIR': return { label: 'Avoir', color: 'text-red-600 bg-red-50' };
-                  case 'NOTE_FRAIS': return { label: 'Note de frais', color: 'text-cyan-600 bg-cyan-50' };
-                  case 'DEVIS': return { label: 'Devis', color: 'text-slate-600 bg-slate-100' };
-                  default: return { label: 'Document', color: 'text-slate-600 bg-slate-100' };
-                }
-              };
-              const typeInfo = getTypeInfo();
-              
-              const isPaid = doc.analysisData?.paymentStatus === 'PAYE' || (doc.analyzed && doc.amount && doc.amount > 0);
-              const invoiceNumber = doc.analysisData?.invoiceNumber || doc.analysisData?.numero || '-';
-              const vendorName = doc.supplier || doc.analysisData?.fournisseur || 'Unknown';
-              const vendorDesc = doc.analysisData?.description || doc.filename;
-              const vendorColor = getVendorColor(vendorName);
-              const sourceEmail = doc.analysisData?.sourceEmail || doc.source || 'Upload manuel';
-              const billedTo = doc.analysisData?.client || doc.analysisData?.clientEmail || 'N/A';
-              const hasLinked = false;
+              const typeInfo = getDocTypeLabel(doc.docType || doc.analysisData?.type);
+              const invoiceNumber = doc.analysisData?.numero || doc.analysisData?.invoiceNumber || '-';
+              const vendorName = doc.supplier || doc.analysisData?.fournisseur || 'Inconnu';
+              const isSelected = selectedIds.has(doc.id);
+              const isPaid = doc.analysisData?.paymentStatus === 'PAYE' || doc.analyzed;
 
               return (
                 <tr 
-                  key={doc.id} 
-                  className={`cursor-pointer transition-colors ${
-                    selectedIds.has(doc.id) 
-                      ? 'bg-primary-50 hover:bg-primary-100' 
-                      : 'hover:bg-slate-50'
-                  }`}
+                  key={doc.id}
                   onClick={() => onDocumentClick(doc)}
+                  className={`group cursor-pointer transition-colors ${
+                    isSelected ? 'bg-slate-50' : 'hover:bg-slate-50/50'
+                  }`}
                 >
                   {/* Checkbox */}
                   <td className="px-4 py-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(doc.id)}
-                      onChange={(e) => toggleSelect(doc.id, e as any)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="w-5 h-5 rounded border-slate-300 text-primary-600 cursor-pointer hover:border-primary-400 transition-colors"
-                    />
-                  </td>
-                  
-                  {/* Type avec badge */}
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1.5">
-                      {isSubscription && <RefreshCw className="w-4 h-4 text-purple-400" />}
-                      {isReceipt && <Receipt className="w-4 h-4 text-amber-400" />}
-                      {isInvoice && <FileText className="w-4 h-4 text-blue-400" />}
-                      {isRefund && <RefreshCw className="w-4 h-4 text-red-400" />}
-                      {!isSubscription && !isReceipt && !isInvoice && !isRefund && <FileText className="w-4 h-4 text-slate-400" />}
-                      <span className={`text-sm px-2 py-0.5 rounded-full ${typeInfo.color}`}>
-                        {typeInfo.label}
-                      </span>
-                      {hasLinked && (
-                        <div className="flex items-center gap-0.5 text-xs text-primary-600">
-                          <Link2 className="w-3 h-3" />
-                          <span>1 linked</span>
-                        </div>
-                      )}
+                    <div 
+                      className="flex items-center justify-center cursor-pointer"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSelect(doc.id, e);
+                      }}
+                    >
+                      <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                        isSelected
+                          ? 'bg-violet-600 border-violet-600'
+                          : 'border-slate-300 bg-white hover:border-violet-400'
+                      }`}>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-white" />
+                        )}
+                      </div>
                     </div>
                   </td>
-                  
-                  {/* Payment Status */}
-                  <td className="px-3 py-3">
-                    {isPaid ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-primary-100 text-primary-700 text-xs font-medium">
-                        <Check className="w-3 h-3" />
-                        Paid
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 text-slate-600 text-xs font-medium">
-                        <X className="w-3 h-3" />
-                        Unpaid
-                      </span>
-                    )}
+
+                  {/* Type */}
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${typeInfo.color}`}>
+                      {typeInfo.label}
+                    </span>
                   </td>
-                  
-                  {/* Source */}
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-1.5">
-                      <Mail className="w-4 h-4 text-slate-400" />
-                      <span className="text-sm text-slate-600">Email</span>
-                    </div>
-                  </td>
-                  
-                  {/* Source Details */}
-                  <td className="px-3 py-3">
-                    <span className="text-sm text-slate-500">{sourceEmail}</span>
-                  </td>
-                  
-                  {/* ID */}
-                  <td className="px-3 py-3">
-                    <span className="text-sm text-slate-600 font-mono">{invoiceNumber}</span>
-                  </td>
-                  
-                  {/* Date */}
-                  <td className="px-3 py-3">
-                    <span className="text-sm text-slate-700">{formatDate(doc.date)}</span>
-                  </td>
-                  
-                  {/* Vendor avec Logo */}
-                  <td className="px-3 py-3">
-                    <div className="flex items-center gap-2.5">
+
+                  {/* Vendor */}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
                       {doc.analysisData?.vendorLogo ? (
                         <img 
                           src={doc.analysisData.vendorLogo} 
-                          alt={vendorName}
-                          className="w-8 h-8 rounded-lg object-contain bg-white border border-slate-200 flex-shrink-0"
-                          onError={(e) => {
-                            // Fallback to letter avatar on error
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            target.nextElementSibling?.classList.remove('hidden');
-                          }}
+                          alt="" 
+                          className="w-8 h-8 rounded-lg object-contain bg-slate-100 p-1"
+                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
                         />
-                      ) : null}
-                      <div className={`w-8 h-8 rounded-lg ${vendorColor.bg} flex items-center justify-center flex-shrink-0 ${doc.analysisData?.vendorLogo ? 'hidden' : ''}`}>
-                        <span className={`${vendorColor.text} text-xs font-bold`}>
-                          {vendorName.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-slate-900 truncate max-w-[180px]">{vendorName}</p>
-                        <p className="text-xs text-slate-500 truncate max-w-[180px]">{vendorDesc}</p>
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center">
+                          <span className="text-xs font-medium text-slate-500">
+                            {vendorName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-sm font-medium text-slate-900">{vendorName}</p>
+                        <p className="text-xs text-slate-500 truncate max-w-[200px]">{doc.filename}</p>
                       </div>
                     </div>
                   </td>
-                  
-                  {/* Billed To */}
-                  <td className="px-3 py-3">
-                    <span className="text-sm text-slate-500">{billedTo}</span>
+
+                  {/* Invoice Number */}
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-slate-600 font-mono">{invoiceNumber}</span>
                   </td>
-                  
+
+                  {/* Date */}
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-slate-600">{formatDate(doc.date)}</span>
+                  </td>
+
                   {/* Amount */}
-                  <td className="px-3 py-3 text-right">
-                    <div>
-                      <span className="text-sm font-semibold text-slate-900">
-                        {formatAmount(doc.amount)}
+                  <td className="px-4 py-3 text-right">
+                    <span className="text-sm font-semibold text-slate-900">{formatAmount(doc.amount)}</span>
+                  </td>
+
+                  {/* Status */}
+                  <td className="px-4 py-3">
+                    {isPaid ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium bg-emerald-50 text-emerald-700">
+                        <Check className="w-3 h-3" />
+                        Traité
                       </span>
-                      {doc.analysisData?.originalAmount && (
-                        <p className="text-xs text-slate-400">
-                          (${doc.analysisData.originalAmount})
-                        </p>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-700">
+                        En attente
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-4 py-3">
+                    <div className="relative">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActionMenuId(actionMenuId === doc.id ? null : doc.id);
+                        }}
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-all"
+                      >
+                        <MoreHorizontal className="w-4 h-4" />
+                      </button>
+
+                      {actionMenuId === doc.id && (
+                        <div 
+                          className="absolute right-0 top-full mt-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-50"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <button
+                            onClick={() => {
+                              onDocumentClick(doc);
+                              setActionMenuId(null);
+                            }}
+                            className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                          >
+                            <Eye className="w-4 h-4" />
+                            Voir
+                          </button>
+                          {onExportSelected && (
+                            <button
+                              onClick={() => {
+                                onSelectionChange?.(new Set([doc.id]));
+                                onExportSelected('csv');
+                                setActionMenuId(null);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                            >
+                              <Download className="w-4 h-4" />
+                              Exporter
+                            </button>
+                          )}
+                          {onDeleteDocument && (
+                            <button
+                              onClick={() => {
+                                onDeleteDocument(doc.id);
+                                setActionMenuId(null);
+                              }}
+                              className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              Supprimer
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
-                  </td>
-                  
-                  {/* Actions */}
-                  <td className="px-2 py-3">
-                    <button 
-                      onClick={(e) => e.stopPropagation()}
-                      className="p-1 hover:bg-slate-100 rounded"
-                    >
-                      <MoreVertical className="w-4 h-4 text-slate-400" />
-                    </button>
                   </td>
                 </tr>
               );
@@ -418,11 +410,14 @@ export function DocumentsTable({
           </tbody>
         </table>
       </div>
-      
+
+      {/* Empty State */}
       {documents.length === 0 && (
-        <div className="p-12 text-center">
-          <FileText className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-          <p className="text-slate-500">No documents found</p>
+        <div className="px-4 py-16 text-center">
+          <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
+            <FileText className="w-6 h-6 text-slate-400" />
+          </div>
+          <p className="text-sm text-slate-500">Aucun document</p>
         </div>
       )}
     </div>
