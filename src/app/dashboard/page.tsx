@@ -24,7 +24,9 @@ import {
   RefreshCw,
   Building2,
   Shield,
-  Download
+  Download,
+  CreditCard,
+  HelpCircle
 } from 'lucide-react';
 
 // Types pour les filtres
